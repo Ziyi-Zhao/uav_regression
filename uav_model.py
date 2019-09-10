@@ -19,18 +19,56 @@ class UAVModel(nn.Module):
         self.cnn_embedding_conv5 = nn.Conv2d(in_channels=16, out_channels=32, kernel_size=4, stride=1)
         self.cnn_embedding_conv6 = nn.Conv2d(in_channels=32, out_channels=64, kernel_size=4, stride=1)
 
-        self.cnn_embedding_bn1 = nn.BatchNorm1d(8)
-        self.cnn_embedding_bn2 = nn.BatchNorm1d(16)
-        self.cnn_embedding_bn3 = nn.BatchNorm1d(32)
-        self.cnn_embedding_bn4 = nn.BatchNorm1d(64)
+        self.cnn_embedding_bn1 = nn.BatchNorm2d(8)
+        self.cnn_embedding_bn2 = nn.BatchNorm2d(16)
+        self.cnn_embedding_bn3 = nn.BatchNorm2d(32)
+        self.cnn_embedding_bn4 = nn.BatchNorm2d(64)
 
-        # Model declaration for the sumNet
+        # lstm model declaration
+        self.lstm1 = nn.LSTM(input_size=1600, hidden_size=2048)
+        self.lstm2 = nn.LSTM(input_size=2048, hidden_size=1024)
+
+        # sumNet model declaration
         self.sum_conv1 = nn.Conv2d(in_channels=1, out_channels=8, kernel_size=3, stride=1)
         self.sum_conv2 = nn.Conv2d(in_channels=8, out_channels=16, kernel_size=3, stride=1)
+        self.sum_transpose1 = nn.ConvTranspose2d(in_channels=16, out_channels=8, kernel_size=3, stride=1)
+        self.sum_transpose2 = nn.ConvTranspose2d(in_channels=8, out_channels=1, kernel_size=3, stride=1)
 
-        pass
+        self.sum_fc1 = nn.Linear(in_features=2048, out_features=1024)
+
+        self.sum_bn1 = nn.BatchNorm2d(8)
+        self.sum_bn2 = nn.BatchNorm2d(16)
+        self.sum_bn3 = nn.BatchNorm2d(8)
+        self.sum_bn4 = nn.BatchNorm2d(1)
 
     def init_parameters(self):
+        # initialize the parameters within the CNN embedding model
+        torch.nn.init.normal_(self.cnn_embedding_conv1.weight, std=0.1)
+        torch.nn.init.constant_(self.cnn_embedding_conv1.bias, val=0.0)
+        torch.nn.init.normal_(self.cnn_embedding_conv2.weight, std=0.1)
+        torch.nn.init.constant_(self.cnn_embedding_conv2.bias, val=0.0)
+        torch.nn.init.normal_(self.cnn_embedding_conv3.weight, std=0.1)
+        torch.nn.init.constant_(self.cnn_embedding_conv3.bias, val=0.0)
+        torch.nn.init.normal_(self.cnn_embedding_conv4.weight, std=0.1)
+        torch.nn.init.constant_(self.cnn_embedding_conv4.bias, val=0.0)
+        torch.nn.init.normal_(self.cnn_embedding_conv5.weight, std=0.1)
+        torch.nn.init.constant_(self.cnn_embedding_conv5.bias, val=0.0)
+        torch.nn.init.normal_(self.cnn_embedding_conv6.weight, std=0.1)
+        torch.nn.init.constant_(self.cnn_embedding_conv6.bias, val=0.0)
+
+        # initialize the parameters within the sumNet model
+        torch.nn.init.normal_(self.sum_conv1.weight, std=0.1)
+        torch.nn.init.constant_(self.sum_conv1.bias, val=0.0)
+        torch.nn.init.normal_(self.sum_conv2.weight, std=0.1)
+        torch.nn.init.constant_(self.sum_conv2.bias, val=0.0)
+
+        torch.nn.init.normal_(self.sum_transpose1.weight, std=0.1)
+        torch.nn.init.constant_(self.sum_transpose1.bias, val=0.0)
+        torch.nn.init.normal_(self.sum_transpose2.weight, std=0.1)
+        torch.nn.init.constant_(self.sum_transpose2.bias, val=0.0)
+
+        torch.nn.init.normal_(self.sum_fc1.weight, std=0.1)
+        torch.nn.init.constant_(self.sum_fc1.bias, val=0.0)
         pass
 
     # PointNet for the feature extraction
@@ -43,7 +81,7 @@ class UAVModel(nn.Module):
     def _rNet_froward(self, x):
         pass
 
-    # Naive CNN for the feature extraction
+    # Basic CNN model for the feature extraction
     def _cnn_forward(self, x):
         # First cnn block
         x = self.cnn_embedding_conv1(x)
@@ -76,16 +114,37 @@ class UAVModel(nn.Module):
 
     # LSTM for the trajectory sequence prediction
     def _lstm_froward(self, x):
+
         pass
 
-    # Summarize the trajectory sequence for the final density prediction
+    # Summarize the trajectory sequence to predict the final density
     def _sumNet_forward(self, x):
+        # Extract features from the lstm outputs
         x = self.sum_conv1(x)
+        x = self.sum_bn1(x)
+        x = self.relu(x)
         x = self.sum_conv2(x)
+        x = self.sum_bn2(x)
+        x = self.relu(x)
         x = self.max_pool(x)
         x = torch.flatten(x, 1)
-        #ToDo: add 2D transpose layer to upsample the output
-        pass
+        x = self.sum_fc1(x)
+        x = x.view(-1, 16*16*8)
 
-    def forward(self):
+        # First 2d transpose block
+        x = self.sum_transpose1(x)
+        x = self.sum_bn3(x)
+        x = self.relu(x)
+
+        # Second 2d transpose block
+        x = self.sum_transpose2(x)
+        x = self.sum_bn4(x)
+
+        # Pixel-wise regression
+        x = torch.sigmoid(x)
+        return  x
+
+    def forward(self, x):
+        x = self._cnn_forward(x)
+        x = self._sumNet_forward(x)
         pass
