@@ -124,10 +124,14 @@ class UAVModel(nn.Module):
     # LSTM for the trajectory sequence prediction
     def _lstm_froward(self, x):
         x = self.lstm(x)
-        # ToDo: apply fc and sigmoid to all time samples
-        x = self.lstm_fc1(x)
-        x = self.lstm_bn1(x)
-        x = torch.sigmoid(x)
+
+        trajectory_list = list()
+        for time_sample in x:
+            time_sample = self.lstm_fc1(time_sample)
+            x = self.lstm_bn1(time_sample)
+            time_sample = torch.sigmoid(time_sample)
+            trajectory_list.append(time_sample)
+        x = torch.stack(trajectory_list, dim=0)
 
         x = x = x.view(x.shape[0], x.shape[1], 32, 32)
         return x
@@ -164,9 +168,11 @@ class UAVModel(nn.Module):
         # (batch, seq, w, w) -> (seq, batch, w, w)
         x = x.permute(1, 0, 2, 3)
 
-        # ToDo: concatenate all the embeddings
+        embedding_list = list()
         for time_sample in x:
             x_embedding = self._cnn_forward(time_sample)
+            embedding_list.append(x_embedding)
+        x_embedding = torch.stack(embedding_list, dim=0)
 
         x_lstm = self._lstm_froward(x_embedding)
 
