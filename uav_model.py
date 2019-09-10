@@ -25,8 +25,12 @@ class UAVModel(nn.Module):
         self.cnn_embedding_bn4 = nn.BatchNorm2d(64)
 
         # lstm model declaration
-        self.lstm1 = nn.LSTM(input_size=1600, hidden_size=2048)
-        self.lstm2 = nn.LSTM(input_size=2048, hidden_size=1024)
+        # Note: the order is (seq, batch, feature) in pytorch
+        self.lstm = nn.LSTM(input_size=1600, hidden_size=512, num_layers=2)
+
+        self.lstm_fc1 = nn.Linear(in_features=512, out_features=1024)
+
+        self.lstm_bn1 = nn.BatchNorm1d(1024)
 
         # sumNet model declaration
         self.sum_conv1 = nn.Conv2d(in_channels=1, out_channels=8, kernel_size=3, stride=1)
@@ -56,6 +60,12 @@ class UAVModel(nn.Module):
         torch.nn.init.normal_(self.cnn_embedding_conv6.weight, std=0.1)
         torch.nn.init.constant_(self.cnn_embedding_conv6.bias, val=0.0)
 
+        # initialize the parameters within the lstm model
+        torch.nn.init.normal_(self.lstm.weight, std=0.1)
+        torch.nn.init.constant_(self.lstm.bias, val=0.0)
+        torch.nn.init.normal_(self.lstm_fc1.weight, std=0.1)
+        torch.nn.init.constant_(self.lstm_fc1.bias, val=0.0)
+
         # initialize the parameters within the sumNet model
         torch.nn.init.normal_(self.sum_conv1.weight, std=0.1)
         torch.nn.init.constant_(self.sum_conv1.bias, val=0.0)
@@ -69,7 +79,6 @@ class UAVModel(nn.Module):
 
         torch.nn.init.normal_(self.sum_fc1.weight, std=0.1)
         torch.nn.init.constant_(self.sum_fc1.bias, val=0.0)
-        pass
 
     # PointNet for the feature extraction
     # Reference: https://arxiv.org/pdf/1612.00593.pdf
@@ -114,8 +123,14 @@ class UAVModel(nn.Module):
 
     # LSTM for the trajectory sequence prediction
     def _lstm_froward(self, x):
+        x = self.lstm(x)
+        # ToDo: apply fc and sigmoid to all time samples
+        x = self.lstm_fc1(x)
+        x = self.lstm_bn1(x)
+        x = torch.sigmoid(x)
 
-        pass
+        x = x = x.view(x.shape[0], x.shape[1], 32, 32)
+        return x
 
     # Summarize the trajectory sequence to predict the final density
     def _sumNet_forward(self, x):
@@ -129,7 +144,7 @@ class UAVModel(nn.Module):
         x = self.max_pool(x)
         x = torch.flatten(x, 1)
         x = self.sum_fc1(x)
-        x = x.view(-1, 16*16*8)
+        x = x.view(-1, 8*8*8)
 
         # First 2d transpose block
         x = self.sum_transpose1(x)
@@ -145,6 +160,18 @@ class UAVModel(nn.Module):
         return  x
 
     def forward(self, x):
-        x = self._cnn_forward(x)
-        x = self._sumNet_forward(x)
-        pass
+        # Note: the order is (seq, batch, feature) in pytorch
+        # (batch, seq, w, w) -> (seq, batch, w, w)
+        x = x.permute(1, 0, 2, 3)
+
+        # ToDo: concatenate all the embeddings
+        for time_sample in x:
+            x_embedding = self._cnn_forward(time_sample)
+
+        x_lstm = self._lstm_froward(x_embedding)
+
+        # (seq, batch, w, w) -> (batch, seq, w, w)
+        x_lstm = x_lstm.permute(1, 0, 2, 3)
+
+        x_sum = self._sumNet_forward(x_lstm)
+        return x_lstm, x_sum
