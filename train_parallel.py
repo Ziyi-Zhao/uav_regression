@@ -5,33 +5,91 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 
+from tqdm import tqdm
 from torch.optim import lr_scheduler
 from uav_model import UAVModel
+from data_loader import UAVDatasetTuple
 
 
-def train(model, train_loader, device, optimizer, criterion, epoch):
+def train(model, train_loader, device, optimizer, criterion_lstm, criterion_sum, epoch):
     model.train()
     running_loss = 0.0
     num_images = 0
-    pass
+
+    for batch_idx, data in enumerate(tqdm(train_loader)):
+        image = data['data'].to(device)
+        label_lstm = data['label_lstm'].to(device)
+        label_sum = data['label_sum'].to(device)
+
+        # zero the parameter gradients
+        optimizer.zero_grad()
+
+        # model prediction
+        lstm_prediction, sum_prediction = model(image)
+        loss_binary_cross_entropy = criterion_lstm(lstm_prediction, label_lstm.data)
+        loss_mean_square_error = criterion_sum(sum_prediction, label_sum.data)
+
+        # combine the two way loss
+        loss = loss_binary_cross_entropy + loss_mean_square_error
+
+        # update the weights within the model
+        loss.backward()
+        optimizer.step()
+
+        # accumulate loss
+        running_loss += loss.item() * image.size(0)
+        num_images += image.size(0)
+
+        if batch_idx % 50 == 0 or batch_idx == len(train_loader) - 1:
+            epoch_loss = running_loss / num_images
+            # ToDo: Add accuracy evaluation for the lstm output and the sum output
+            print('\nTraining phase: epoch: {} batch:{} Loss: {:.4f}\n'.format(epoch, batch_idx, epoch_loss))
 
 
-def val(model, test_loader, device, criterion, epoch):
+def val(model, test_loader, device, criterion_lstm, criterion_sum, epoch):
     model.eval()
     running_loss = 0.0
-    pass
+    num_images = 0
+
+    with torch.no_grad():
+        for batch_idx, data in enumerate(tqdm(test_loader)):
+            image = data['data'].to(device)
+            label_lstm = data['label_lstm'].to(device)
+            label_sum = data['label_sum'].to(device)
+
+            # model prediction
+            lstm_prediction, sum_prediction = model(image)
+            loss_binary_cross_entropy = criterion_lstm(lstm_prediction, label_lstm.data)
+            loss_mean_square_error = criterion_sum(sum_prediction, label_sum.data)
+
+            # combine the two way loss
+            loss = loss_binary_cross_entropy + loss_mean_square_error
+
+            # accumulate loss
+            running_loss += loss.item() * image.size(0)
+            num_images += image.size(0)
+
+    test_loss = running_loss / len(test_loader.dataset)
+
+    # ToDo: Add accuracy evaluation for the lstm output and the sum output
+    print('\nTesting phase: epoch: {} Loss: {:.4f}\n'.format(epoch, test_loss))
+
+    return test_loss
 
 
+# ToDo: change to save state dict (?)
 def save_model(checkpoint_dir, model_checkpoint_name, model):
     model_save_path = '{}/{}'.format(checkpoint_dir, model_checkpoint_name)
     print('save model to: \n{}'.format(model_save_path))
     torch.save(model, model_save_path)
 
+
 def main():
     torch.manual_seed(0)
 
     parser = argparse.ArgumentParser()
-    parser.add_argument("--input_path", help="input data path", required=True, type=str)
+    parser.add_argument("--train_path", help="train data path", required=True, type=str)
+    parser.add_argument("--test_path", help="test data path", required=True, type=str)
     parser.add_argument("--lr", help="learning rate", required=True, type=float)
     parser.add_argument("--momentum", help="momentum", required=True, type=float)
     parser.add_argument("--weight_decay", help="weight decay", required=True, type=float)
@@ -47,9 +105,18 @@ def main():
         os.mkdir(args.checkpoint_dir)
 
     device = torch.device("cuda")
+
+    train_dataset = UAVDatasetTuple(args.train_path)
+    test_dataset = UAVDatasetTuple(args.test_path)
+    print("Total image tuples for train: ", len(train_dataset))
+    print("Total image tuples for test: ", len(test_dataset))
+
     print("\nLet's use", torch.cuda.device_count(), "GPUs!\n")
     model_ft = UAVModel()
     model_ft = nn.DataParallel(model_ft)
+
+    criterion_lstm = nn.BCELoss()
+    criterion_sum = nn.MSELoss()
 
     if args.load_from_checkpoint:
         chkpt_model_path = os.path.join(args.checkpoint_dir, args.model_checkpoint_name)
@@ -57,22 +124,34 @@ def main():
         chkpt_model = torch.load(chkpt_model_path, map_location=device)
         model_ft.load_state_dict(chkpt_model.state_dict())
 
+    model_ft = model_ft.to(device)
+
     # Observe that all parameters are being optimized
     optimizer_ft = optim.Adam(model_ft.parameters(), lr=args.lr, weight_decay=args.weight_decay)
 
     # Decay LR by a factor of 0.1
     exp_lr_scheduler = lr_scheduler.StepLR(optimizer_ft, step_size=20, gamma=0.1)
 
-    model_ft = model_ft.to(device)
+    train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True, num_workers=30)
+    test_loader = torch.utils.data.DataLoader(test_dataset, batch_size=args.batch_size, shuffle=False, num_workers=30)
+
+    if args.eval_only:
+        loss = val(model_ft, test_loader, device, criterion_lstm, criterion_sum, 0)
+        print('\nTesting phase: epoch: {} Loss: {:.4f}\n'.format(0, loss))
+        return True
 
     best_loss = np.inf
     for epoch in range(args.num_epochs):
         print('Epoch {}/{}'.format(epoch, args.num_epochs - 1))
         print('-' * 80)
         exp_lr_scheduler.step()
-        train()
-
-    pass
+        train(model_ft, train_loader, device, optimizer_ft, criterion_lstm, criterion_sum, epoch)
+        loss = val(model_ft, test_loader, device, criterion_lstm, criterion_sum, 0)
+        if loss < best_loss:
+            save_model(checkpoint_dir=args.checkpoint_dir,
+                       model_checkpoint_name=args.model_checkpoint_name + "_" + loss,
+                       model=model_ft)
+            best_loss = loss
 
 
 if __name__ == '__main__':
