@@ -9,6 +9,7 @@ from tqdm import tqdm
 from torch.optim import lr_scheduler
 from uav_model import UAVModel
 from data_loader import UAVDatasetTuple
+from utils import draw_roc_curve, calculate_precision_recall
 
 
 def train(model, train_loader, device, optimizer, criterion_lstm, criterion_sum, epoch):
@@ -42,8 +43,10 @@ def train(model, train_loader, device, optimizer, criterion_lstm, criterion_sum,
 
         if batch_idx % 50 == 0 or batch_idx == len(train_loader) - 1:
             epoch_loss = running_loss / num_images
-            # ToDo: Add accuracy evaluation for the lstm output and the sum output
-            print('\nTraining phase: epoch: {} batch:{} Loss: {:.4f}\n'.format(epoch, batch_idx, epoch_loss))
+            lstm_prediction_np, label_lstm_np = np.array(lstm_prediction), np.array(label_lstm)
+            precision, recall = calculate_precision_recall(lstm_prediction_np, label_lstm_np)
+            auroc = draw_roc_curve(lstm_prediction_np, label_lstm_np, "train", epoch, batch_idx)
+            print('\nTraining phase: epoch: {} batch:{} Loss: {:.4f} Precision: {:.4f} Recall: {:.4f} AUROC: {:.4f}\n'.format(epoch, batch_idx, epoch_loss, precision, recall, auroc))
 
 
 def val(model, test_loader, device, criterion_lstm, criterion_sum, epoch):
@@ -71,8 +74,10 @@ def val(model, test_loader, device, criterion_lstm, criterion_sum, epoch):
 
     test_loss = running_loss / len(test_loader.dataset)
 
-    # ToDo: Add accuracy evaluation for the lstm output and the sum output
-    print('\nTesting phase: epoch: {} Loss: {:.4f}\n'.format(epoch, test_loss))
+    lstm_prediction_np, label_lstm_np = np.array(lstm_prediction), np.array(label_lstm)
+    precision, recall = calculate_precision_recall(lstm_prediction_np, label_lstm_np)
+    auroc = draw_roc_curve(lstm_prediction_np, label_lstm_np, "test", epoch, 0)
+    print('\nTesting phase: epoch: {} Loss: {:.4f} Precision: {:.4f} Recall: {:.4f} AUROC: {:.4f}\n'.format(epoch, test_loss, precision, recall, auroc))
 
     return test_loss
 
@@ -106,8 +111,8 @@ def main():
 
     device = torch.device("cuda")
 
-    train_dataset = UAVDatasetTuple(args.train_path, mode="train")
-    test_dataset = UAVDatasetTuple(args.test_path, mode="test")
+    train_dataset = UAVDatasetTuple(image_path=args.train_path, label_lstm_path="", label_sum_path="", mode="train")
+    test_dataset = UAVDatasetTuple(image_path=args.test_path, label_lstm_path="", label_sum_path="", mode="test")
     print("Total image tuples for train: ", len(train_dataset))
     print("Total image tuples for test: ", len(test_dataset))
 
