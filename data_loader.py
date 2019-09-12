@@ -11,36 +11,39 @@ from torchvision import transforms
 from torch.utils.data import Dataset, DataLoader
 
 class UAVDatasetTuple(Dataset):
-    def __init__(self, path, mode):
-        self.path = path
+    def __init__(self, image_path, label_lstm_path, label_sum_path, mode):
+        self.image_path = image_path
+        self.label_lstm_path = label_lstm_path
+        self.label_sum_path = label_sum_path
         self.mode = mode
         self.image_md = list()
-        self.label_md = list()
+        self.label_lstm_md = list()
+        self.label_sum_md = list()
         pass
 
     def _get_tuple(self):
-        image_path = ""
-        label_path = ""
+        image_collection = read_pickle(self.image_path)
+        label_lstm_collection = read_pickle(self.label_lstm_path)
+        label_sum_collection = read_pickle(self.label_sum_path)
 
-        image_collection = read_pickle(image_path)
-        label_collection = read_pickle(label_path)
-
-        assert len(image_collection) == len(label_collection), "image size and label size is not identical"
+        assert len(image_collection) == len(label_lstm_collection) == len(label_sum_collection), "image size and label size is not identical"
 
         for idx, _ in enumerate(image_collection):
             self.image_md.append(image_collection[idx])
-            self.label_md.append(label_collection[idx])
+            self.label_lstm_md.append(label_lstm_collection[idx])
+            self.label_sum_md.append(label_sum_collection[idx])
 
     def _prepare_data(self, idx):
         image_md = self.image_md[idx]
         return  image_md
 
     def _get_label(self, idx):
-        label_md = self.label_md[idx]
-        return label_md
+        label_lstm_md = self.label_lstm_md[idx]
+        label_sum_md = self.label_sum_md[idx]
+        return label_lstm_md, label_sum_md
 
     def __len__(self):
-        assert len(self.image_md) == len(self.label_md), "image size and label size is not identical"
+        assert len(self.image_md) == len(self.label_lstm_md) == len(self.label_sum_md), "image size and label size is not identical"
         return len(self.image_md)
 
     def __getitem__(self, idx):
