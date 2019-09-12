@@ -1,9 +1,13 @@
+import numpy as np
 import torch
 import torch.nn as nn
 import torchvision
 
+from torch.autograd import Variable
+
+
 class UAVModel(nn.Module):
-    def __init__(self):
+    def __init__(self, structure="basic_cnn"):
         super(UAVModel, self).__init__()
 
         # Common model declaration
@@ -11,18 +15,44 @@ class UAVModel(nn.Module):
         self.avg_pool = nn.AvgPool2d(kernel_size=2, stride=1)
         self.max_pool = nn.MaxPool2d(kernel_size=2, stride=1)
 
-        # CNN embedding model declaration
-        self.cnn_embedding_conv1 = nn.Conv2d(in_channels=4, out_channels=8, kernel_size=5, stride=1)
-        self.cnn_embedding_conv2 = nn.Conv2d(in_channels=8, out_channels=8, kernel_size=5, stride=1)
-        self.cnn_embedding_conv3 = nn.Conv2d(in_channels=8, out_channels=16, kernel_size=4, stride=1)
-        self.cnn_embedding_conv4 = nn.Conv2d(in_channels=16, out_channels=16, kernel_size=4, stride=1)
-        self.cnn_embedding_conv5 = nn.Conv2d(in_channels=16, out_channels=32, kernel_size=4, stride=1)
-        self.cnn_embedding_conv6 = nn.Conv2d(in_channels=32, out_channels=64, kernel_size=4, stride=1)
+        if self.structure == "basic_cnn":
+            # CNN embedding model declaration
+            self.cnn_embedding_conv1 = nn.Conv2d(in_channels=4, out_channels=8, kernel_size=5, stride=1)
+            self.cnn_embedding_conv2 = nn.Conv2d(in_channels=8, out_channels=8, kernel_size=5, stride=1)
+            self.cnn_embedding_conv3 = nn.Conv2d(in_channels=8, out_channels=16, kernel_size=4, stride=1)
+            self.cnn_embedding_conv4 = nn.Conv2d(in_channels=16, out_channels=16, kernel_size=4, stride=1)
+            self.cnn_embedding_conv5 = nn.Conv2d(in_channels=16, out_channels=32, kernel_size=4, stride=1)
+            self.cnn_embedding_conv6 = nn.Conv2d(in_channels=32, out_channels=64, kernel_size=4, stride=1)
 
-        self.cnn_embedding_bn1 = nn.BatchNorm2d(8)
-        self.cnn_embedding_bn2 = nn.BatchNorm2d(16)
-        self.cnn_embedding_bn3 = nn.BatchNorm2d(32)
-        self.cnn_embedding_bn4 = nn.BatchNorm2d(64)
+            self.cnn_embedding_bn1 = nn.BatchNorm2d(8)
+            self.cnn_embedding_bn2 = nn.BatchNorm2d(16)
+            self.cnn_embedding_bn3 = nn.BatchNorm2d(32)
+            self.cnn_embedding_bn4 = nn.BatchNorm2d(64)
+        elif self.structure == "pnet":
+            # stn to support the pNet
+            self.stn_conv1 = nn.Conv1d(4, 64, 1)
+            self.stn_conv2 = nn.Conv1d(64, 128, 1)
+            self.stn_conv3 = nn.Conv1d(128, 1024, 1)
+
+            self.stn_fc1 = nn.Linear(1024, 512)
+            self.stn_fc2 = nn.Linear(512, 256)
+            self.stn_fc3 = nn.Linear(256, 16)
+
+            self.stn_bn1 = nn.BatchNorm1d(64)
+            self.stn_bn2 = nn.BatchNorm1d(128)
+            self.stn_bn3 = nn.BatchNorm1d(1024)
+            self.stn_bn4 = nn.BatchNorm1d(512)
+            self.stn_bn5 = nn.BatchNorm1d(256)
+
+            # pNet embedding model declaration
+            self.pNet_conv1 = torch.nn.Conv1d(4, 64, 1)
+            self.pNet_conv2 = torch.nn.Conv1d(64, 128, 1)
+            self.pNet_conv3 = torch.nn.Conv1d(128, 1024, 1)
+            self.pNet_bn1 = nn.BatchNorm1d(64)
+            self.pNet_bn2 = nn.BatchNorm1d(128)
+            self.pNet_bn3 = nn.BatchNorm1d(1024)
+        elif self.structure == "rnet":
+            pass
 
         # lstm model declaration
         # Note: the order is (seq, batch, feature) in pytorch
@@ -45,20 +75,50 @@ class UAVModel(nn.Module):
         self.sum_bn3 = nn.BatchNorm2d(8)
         self.sum_bn4 = nn.BatchNorm2d(1)
 
+        self.structure = structure
+
+        self.init_parameters()
+
     def init_parameters(self):
-        # initialize the parameters within the CNN embedding model
-        torch.nn.init.normal_(self.cnn_embedding_conv1.weight, std=0.1)
-        torch.nn.init.constant_(self.cnn_embedding_conv1.bias, val=0.0)
-        torch.nn.init.normal_(self.cnn_embedding_conv2.weight, std=0.1)
-        torch.nn.init.constant_(self.cnn_embedding_conv2.bias, val=0.0)
-        torch.nn.init.normal_(self.cnn_embedding_conv3.weight, std=0.1)
-        torch.nn.init.constant_(self.cnn_embedding_conv3.bias, val=0.0)
-        torch.nn.init.normal_(self.cnn_embedding_conv4.weight, std=0.1)
-        torch.nn.init.constant_(self.cnn_embedding_conv4.bias, val=0.0)
-        torch.nn.init.normal_(self.cnn_embedding_conv5.weight, std=0.1)
-        torch.nn.init.constant_(self.cnn_embedding_conv5.bias, val=0.0)
-        torch.nn.init.normal_(self.cnn_embedding_conv6.weight, std=0.1)
-        torch.nn.init.constant_(self.cnn_embedding_conv6.bias, val=0.0)
+        if self.structure == "basic_cnn":
+            # initialize the parameters within the CNN embedding model
+            torch.nn.init.normal_(self.cnn_embedding_conv1.weight, std=0.1)
+            torch.nn.init.constant_(self.cnn_embedding_conv1.bias, val=0.0)
+            torch.nn.init.normal_(self.cnn_embedding_conv2.weight, std=0.1)
+            torch.nn.init.constant_(self.cnn_embedding_conv2.bias, val=0.0)
+            torch.nn.init.normal_(self.cnn_embedding_conv3.weight, std=0.1)
+            torch.nn.init.constant_(self.cnn_embedding_conv3.bias, val=0.0)
+            torch.nn.init.normal_(self.cnn_embedding_conv4.weight, std=0.1)
+            torch.nn.init.constant_(self.cnn_embedding_conv4.bias, val=0.0)
+            torch.nn.init.normal_(self.cnn_embedding_conv5.weight, std=0.1)
+            torch.nn.init.constant_(self.cnn_embedding_conv5.bias, val=0.0)
+            torch.nn.init.normal_(self.cnn_embedding_conv6.weight, std=0.1)
+            torch.nn.init.constant_(self.cnn_embedding_conv6.bias, val=0.0)
+        elif self.structure == "pnet":
+            # initialize the parameters within the STN model
+            torch.nn.init.normal_(self.stn_conv1.weight, std=0.1)
+            torch.nn.init.constant_(self.stn_conv1.bias, val=0.0)
+            torch.nn.init.normal_(self.stn_conv2.weight, std=0.1)
+            torch.nn.init.constant_(self.stn_conv2.bias, val=0.0)
+            torch.nn.init.normal_(self.stn_conv3.weight, std=0.1)
+            torch.nn.init.constant_(self.stn_conv3.bias, val=0.0)
+
+            torch.nn.init.normal_(self.stn_fc1.weight, std=0.1)
+            torch.nn.init.constant_(self.stn_fc1.bias, val=0.0)
+            torch.nn.init.normal_(self.stn_fc2.weight, std=0.1)
+            torch.nn.init.constant_(self.stn_fc2.bias, val=0.0)
+            torch.nn.init.normal_(self.stn_fc3.weight, std=0.1)
+            torch.nn.init.constant_(self.stn_fc3.bias, val=0.0)
+
+            # initialize the parameters within the PointNet model
+            torch.nn.init.normal_(self.pNet_conv1.weight, std=0.1)
+            torch.nn.init.constant_(self.pNet_conv1.bias, val=0.0)
+            torch.nn.init.normal_(self.pNet_conv2.weight, std=0.1)
+            torch.nn.init.constant_(self.pNet_conv2.bias, val=0.0)
+            torch.nn.init.normal_(self.pNet_conv3.weight, std=0.1)
+            torch.nn.init.constant_(self.pNet_conv3.bias, val=0.0)
+        elif self.structure == "rnet":
+            pass
 
         # initialize the parameters within the lstm model
         torch.nn.init.normal_(self.lstm.weight, std=0.1)
@@ -83,7 +143,40 @@ class UAVModel(nn.Module):
     # PointNet for the feature extraction
     # Reference: https://arxiv.org/pdf/1612.00593.pdf
     def _pNet_forward(self, x):
-        pass
+        # ToDo: handle the input data variance
+        trans = self._stn_forward(x)
+        x = x.transpose(2, 1)
+        x = torch.bmm(x, trans)
+        x = x.transpose(2, 1)
+        x = self.relu(self.pNet_bn1(self.pNet_conv1(x)))
+
+        x = self.relu(self.pNet_bn2(self.pNet_conv2(x)))
+        x = self.pNet_bn3(self.pNet_conv3(x))
+        x = torch.max(x, 2, keepdim=True)[0]
+        x = x.view(-1, 1024)
+        return x
+
+    # STN to support the pNet
+    def _stn_forward(self, x):
+        batch_size = x.size()[0]
+        x = self.relu(self.stn_bn1(self.stn_conv1(x)))
+        x = self.relu(self.stn_bn2(self.stn_conv2(x)))
+        x = self.relu(self.stn_bn3(self.stn_conv3(x)))
+        x = torch.max(x, 2, keepdim=True)[0]
+        x = x.view(-1, 1024)
+
+        x = self.relu(self.stn_bn4(self.stn_fc1(x)))
+        x = self.relu(self.stn_bn5(self.stn_fc2(x)))
+        x = self.stn_fc3(x)
+
+        iden = Variable(torch.from_numpy(np.array([1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1]).astype(np.float32))).view(1, 16).repeat(batch_size, 1)
+
+        if x.is_cuda:
+            iden = iden.cuda()
+
+        x = x + iden
+        x = x.view(-1, 4, 4)
+        return x
 
     # RouteNet for the feature extraction
     # Reference: https://research.nvidia.com/sites/default/files/pubs/2018-11_RouteNet%3A-routability-prediction/a80-xie.pdf
@@ -170,7 +263,13 @@ class UAVModel(nn.Module):
 
         embedding_list = list()
         for time_sample in x:
-            x_embedding = self._cnn_forward(time_sample)
+            if self.structure == "basic_cnn":
+                x_embedding = self._cnn_forward(time_sample)
+            elif self.structure == "pnet":
+                x_embedding = self._pNet_forward(time_sample)
+            elif self.structure == "rnet":
+                pass
+
             embedding_list.append(x_embedding)
         x_embedding = torch.stack(embedding_list, dim=0)
 
