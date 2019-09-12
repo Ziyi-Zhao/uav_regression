@@ -77,7 +77,7 @@ def val(model, test_loader, device, criterion_lstm, criterion_sum, epoch):
     return test_loss
 
 
-# ToDo: change to save state dict (?)
+# ToDo: change to save state dict instead of the model (?)
 def save_model(checkpoint_dir, model_checkpoint_name, model):
     model_save_path = '{}/{}'.format(checkpoint_dir, model_checkpoint_name)
     print('save model to: \n{}'.format(model_save_path))
@@ -106,8 +106,8 @@ def main():
 
     device = torch.device("cuda")
 
-    train_dataset = UAVDatasetTuple(args.train_path)
-    test_dataset = UAVDatasetTuple(args.test_path)
+    train_dataset = UAVDatasetTuple(args.train_path, mode="train")
+    test_dataset = UAVDatasetTuple(args.test_path, mode="test")
     print("Total image tuples for train: ", len(train_dataset))
     print("Total image tuples for test: ", len(test_dataset))
 
