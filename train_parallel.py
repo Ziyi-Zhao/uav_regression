@@ -82,11 +82,10 @@ def val(model, test_loader, device, criterion_lstm, criterion_sum, epoch):
     return test_loss
 
 
-# ToDo: change to save state dict instead of the model (?)
 def save_model(checkpoint_dir, model_checkpoint_name, model):
     model_save_path = '{}/{}'.format(checkpoint_dir, model_checkpoint_name)
     print('save model to: \n{}'.format(model_save_path))
-    torch.save(model, model_save_path)
+    torch.save(model.state_dict(), model_save_path)
 
 
 def main():
@@ -127,7 +126,8 @@ def main():
         chkpt_model_path = os.path.join(args.checkpoint_dir, args.model_checkpoint_name)
         print("Loading ", chkpt_model_path)
         chkpt_model = torch.load(chkpt_model_path, map_location=device)
-        model_ft.load_state_dict(chkpt_model.state_dict())
+        model_ft.load_state_dict(chkpt_model)
+        model_ft.eval()
 
     model_ft = model_ft.to(device)
 
