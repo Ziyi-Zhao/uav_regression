@@ -106,8 +106,7 @@ def main():
     torch.manual_seed(0)
 
     parser = argparse.ArgumentParser()
-    parser.add_argument("--train_path", help="train data path", required=True, type=str)
-    parser.add_argument("--test_path", help="test data path", required=True, type=str)
+    parser.add_argument("--data_path", help="data path", required=True, type=str)
     parser.add_argument("--structure", help="the structure of the feature embedding model", required=True, type=str)
     parser.add_argument("--lr", help="learning rate", required=True, type=float)
     parser.add_argument("--momentum", help="momentum", required=True, type=float)
@@ -125,8 +124,10 @@ def main():
 
     device = torch.device("cuda")
 
-    train_dataset = UAVDatasetTuple(image_path=args.train_path, mode="train")
-    test_dataset = UAVDatasetTuple(image_path=args.test_path, mode="test")
+    all_dataset = UAVDatasetTuple(image_path=args.train_path, mode="train")
+    train_size = int(0.8 * len(all_dataset))
+    test_size = len(all_dataset) - train_size
+    train_dataset, test_dataset = torch.utils.data.random_split(all_dataset, [train_size, test_size])
     print("Total image tuples for train: ", len(train_dataset))
     print("Total image tuples for test: ", len(test_dataset))
 
