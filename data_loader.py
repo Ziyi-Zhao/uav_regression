@@ -11,20 +11,20 @@ from torchvision import transforms
 from torch.utils.data import Dataset, DataLoader
 
 class UAVDatasetTuple(Dataset):
-    def __init__(self, image_path, label_lstm_path, label_sum_path, mode):
+    def __init__(self, image_path, mode):
         self.image_path = image_path
-        self.label_lstm_path = label_lstm_path
-        self.label_sum_path = label_sum_path
+        self.label_lstm_path = image_path.replace("_data_trajectory", "_label_trajectory")
+        self.label_sum_path = image_path.replace("_data_trajectory", "_label_density")
         self.mode = mode
         self.image_md = list()
         self.label_lstm_md = list()
         self.label_sum_md = list()
-        pass
+        self._get_tuple()
 
     def _get_tuple(self):
-        image_collection = read_pickle(self.image_path)
-        label_lstm_collection = read_pickle(self.label_lstm_path)
-        label_sum_collection = read_pickle(self.label_sum_path)
+        image_collection = np.load(self.image_path)
+        label_lstm_collection = np.load(self.label_lstm_path)
+        label_sum_collection = np.load(self.label_sum_path)
 
         assert len(image_collection) == len(label_lstm_collection) == len(label_sum_collection), "image size and label size is not identical"
 
@@ -57,6 +57,6 @@ class UAVDatasetTuple(Dataset):
             print(e)
             raise
 
-        sample = {'image': image, 'label_lstm': label_lstm, 'label_cnn': label_cnn}
+        sample = {'data': image, 'label_lstm': label_lstm, 'label_sum': label_cnn}
 
         return sample

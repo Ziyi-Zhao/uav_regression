@@ -10,19 +10,19 @@ class UAVModel(nn.Module):
     def __init__(self, structure="basic_cnn"):
         super(UAVModel, self).__init__()
 
+        self.structure = structure
+
         # Common model declaration
         self.relu = nn.ReLU(inplace=True)
-        self.avg_pool = nn.AvgPool2d(kernel_size=2, stride=1)
-        self.max_pool = nn.MaxPool2d(kernel_size=2, stride=1)
+        self.avg_pool = nn.AvgPool2d(kernel_size=2, stride=2)
+        self.max_pool = nn.MaxPool2d(kernel_size=2, stride=2)
 
         if self.structure == "basic_cnn":
             # CNN embedding model declaration
-            self.cnn_embedding_conv1 = nn.Conv2d(in_channels=4, out_channels=8, kernel_size=5, stride=1)
-            self.cnn_embedding_conv2 = nn.Conv2d(in_channels=8, out_channels=8, kernel_size=5, stride=1)
-            self.cnn_embedding_conv3 = nn.Conv2d(in_channels=8, out_channels=16, kernel_size=4, stride=1)
-            self.cnn_embedding_conv4 = nn.Conv2d(in_channels=16, out_channels=16, kernel_size=4, stride=1)
-            self.cnn_embedding_conv5 = nn.Conv2d(in_channels=16, out_channels=32, kernel_size=4, stride=1)
-            self.cnn_embedding_conv6 = nn.Conv2d(in_channels=32, out_channels=64, kernel_size=4, stride=1)
+            self.cnn_embedding_conv1 = nn.Conv2d(in_channels=4, out_channels=8, kernel_size=3, stride=1)
+            self.cnn_embedding_conv2 = nn.Conv2d(in_channels=8, out_channels=16, kernel_size=3, stride=1)
+            self.cnn_embedding_conv3 = nn.Conv2d(in_channels=16, out_channels=32, kernel_size=3, stride=1)
+            self.cnn_embedding_conv4 = nn.Conv2d(in_channels=32, out_channels=64, kernel_size=3, stride=1)
 
             self.cnn_embedding_bn1 = nn.BatchNorm2d(8)
             self.cnn_embedding_bn2 = nn.BatchNorm2d(16)
@@ -56,23 +56,23 @@ class UAVModel(nn.Module):
 
         # lstm model declaration
         # Note: the order is (seq, batch, feature) in pytorch
-        self.lstm = nn.LSTM(input_size=1600, hidden_size=512, num_layers=2)
+        self.lstm = nn.LSTM(input_size=576, hidden_size=512, num_layers=2)
 
         self.lstm_fc1 = nn.Linear(in_features=512, out_features=1024)
 
         self.lstm_bn1 = nn.BatchNorm1d(1024)
 
         # sumNet model declaration
-        self.sum_conv1 = nn.Conv2d(in_channels=1, out_channels=8, kernel_size=3, stride=1)
-        self.sum_conv2 = nn.Conv2d(in_channels=8, out_channels=16, kernel_size=3, stride=1)
-        self.sum_transpose1 = nn.ConvTranspose2d(in_channels=16, out_channels=8, kernel_size=3, stride=1)
-        self.sum_transpose2 = nn.ConvTranspose2d(in_channels=8, out_channels=1, kernel_size=3, stride=1)
+        self.sum_conv1 = nn.Conv2d(in_channels=60, out_channels=32, kernel_size=3, stride=1)
+        self.sum_conv2 = nn.Conv2d(in_channels=32, out_channels=16, kernel_size=3, stride=1)
+        self.sum_transpose1 = nn.ConvTranspose2d(in_channels=4, out_channels=2, kernel_size=3, stride=1)
+        self.sum_transpose2 = nn.ConvTranspose2d(in_channels=2, out_channels=1, kernel_size=3, stride=1)
 
-        self.sum_fc1 = nn.Linear(in_features=2048, out_features=1024)
+        self.sum_fc1 = nn.Linear(in_features=576, out_features=3136)
 
-        self.sum_bn1 = nn.BatchNorm2d(8)
+        self.sum_bn1 = nn.BatchNorm2d(32)
         self.sum_bn2 = nn.BatchNorm2d(16)
-        self.sum_bn3 = nn.BatchNorm2d(8)
+        self.sum_bn3 = nn.BatchNorm2d(2)
         self.sum_bn4 = nn.BatchNorm2d(1)
 
         self.structure = structure
@@ -90,10 +90,6 @@ class UAVModel(nn.Module):
             torch.nn.init.constant_(self.cnn_embedding_conv3.bias, val=0.0)
             torch.nn.init.normal_(self.cnn_embedding_conv4.weight, std=0.1)
             torch.nn.init.constant_(self.cnn_embedding_conv4.bias, val=0.0)
-            torch.nn.init.normal_(self.cnn_embedding_conv5.weight, std=0.1)
-            torch.nn.init.constant_(self.cnn_embedding_conv5.bias, val=0.0)
-            torch.nn.init.normal_(self.cnn_embedding_conv6.weight, std=0.1)
-            torch.nn.init.constant_(self.cnn_embedding_conv6.bias, val=0.0)
         elif self.structure == "pnet":
             # initialize the parameters within the STN model
             torch.nn.init.normal_(self.stn_conv1.weight, std=0.1)
@@ -121,8 +117,14 @@ class UAVModel(nn.Module):
             pass
 
         # initialize the parameters within the lstm model
-        torch.nn.init.normal_(self.lstm.weight, std=0.1)
-        torch.nn.init.constant_(self.lstm.bias, val=0.0)
+        torch.nn.init.normal_(self.lstm.weight_hh_l0, std=0.1)
+        torch.nn.init.constant_(self.lstm.bias_hh_l0, val=0.0)
+        torch.nn.init.normal_(self.lstm.weight_ih_l0, std=0.1)
+        torch.nn.init.constant_(self.lstm.bias_ih_l0, val=0.0)
+        torch.nn.init.normal_(self.lstm.weight_hh_l1, std=0.1)
+        torch.nn.init.constant_(self.lstm.bias_hh_l1, val=0.0)
+        torch.nn.init.normal_(self.lstm.weight_ih_l1, std=0.1)
+        torch.nn.init.constant_(self.lstm.bias_ih_l1, val=0.0)
         torch.nn.init.normal_(self.lstm_fc1.weight, std=0.1)
         torch.nn.init.constant_(self.lstm_fc1.bias, val=0.0)
 
@@ -187,26 +189,24 @@ class UAVModel(nn.Module):
     def _cnn_forward(self, x):
         # First cnn block
         x = self.cnn_embedding_conv1(x)
-        x = self.cnn_embedding_conv2(x)
         x = self.cnn_embedding_bn1(x)
         x = self.relu(x)
         x = self.max_pool(x)
 
         # Second cnn block
-        x = self.cnn_embedding_conv3(x)
-        x = self.cnn_embedding_conv4(x)
+        x = self.cnn_embedding_conv2(x)
         x = self.cnn_embedding_bn2(x)
         x = self.relu(x)
-        x = self.max_pool(x)
+        # x = self.max_pool(x)
 
         # Third cnn block
-        x = self.cnn_embedding_conv5(x)
+        x = self.cnn_embedding_conv3(x)
         x = self.cnn_embedding_bn3(x)
         x = self.relu(x)
         x = self.max_pool(x)
 
         # Fourth cnn block
-        x = self.cnn_embedding_conv6(x)
+        x = self.cnn_embedding_conv4(x)
         x = self.cnn_embedding_bn4(x)
         x = self.relu(x)
 
@@ -216,17 +216,17 @@ class UAVModel(nn.Module):
 
     # LSTM for the trajectory sequence prediction
     def _lstm_froward(self, x):
-        x = self.lstm(x)
+        x_out, x_hidden = self.lstm(x)
 
         trajectory_list = list()
-        for time_sample in x:
+        for time_sample in x_out:
             time_sample = self.lstm_fc1(time_sample)
-            x = self.lstm_bn1(time_sample)
+            time_sample = self.lstm_bn1(time_sample)
             time_sample = torch.sigmoid(time_sample)
             trajectory_list.append(time_sample)
         x = torch.stack(trajectory_list, dim=0)
 
-        x = x = x.view(x.shape[0], x.shape[1], 32, 32)
+        x = x.view(x.shape[0], x.shape[1], 32, 32)
         return x
 
     # Summarize the trajectory sequence to predict the final density
@@ -235,13 +235,14 @@ class UAVModel(nn.Module):
         x = self.sum_conv1(x)
         x = self.sum_bn1(x)
         x = self.relu(x)
+        x = self.max_pool(x)
         x = self.sum_conv2(x)
         x = self.sum_bn2(x)
         x = self.relu(x)
         x = self.max_pool(x)
         x = torch.flatten(x, 1)
         x = self.sum_fc1(x)
-        x = x.view(-1, 8*8*8)
+        x = x.view(-1, 4, 28, 28)
 
         # First 2d transpose block
         x = self.sum_transpose1(x)
@@ -258,8 +259,8 @@ class UAVModel(nn.Module):
 
     def forward(self, x):
         # Note: the order is (seq, batch, feature) in pytorch
-        # (batch, seq, w, w) -> (seq, batch, w, w)
-        x = x.permute(1, 0, 2, 3)
+        # (batch, seq, w, w, c) -> (seq, batch, c, w, w)
+        x = x.permute(1, 0, 4, 2, 3)
 
         embedding_list = list()
         for time_sample in x:
@@ -279,4 +280,5 @@ class UAVModel(nn.Module):
         x_lstm = x_lstm.permute(1, 0, 2, 3)
 
         x_sum = self._sumNet_forward(x_lstm)
+        x_sum = torch.squeeze(x_sum)
         return x_lstm, x_sum

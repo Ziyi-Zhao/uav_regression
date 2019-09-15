@@ -12,9 +12,13 @@ from data_loader import UAVDatasetTuple
 from utils import draw_roc_curve, calculate_precision_recall
 
 
+os.environ["CUDA_VISIBLE_DEVICES"]="1"
+
+
 def train(model, train_loader, device, optimizer, criterion_lstm, criterion_sum, epoch):
     model.train()
-    running_loss = 0.0
+    lstm_running_loss = 0.0
+    sum_running_loss = 0.0
     num_images = 0
 
     for batch_idx, data in enumerate(tqdm(train_loader)):
@@ -38,21 +42,29 @@ def train(model, train_loader, device, optimizer, criterion_lstm, criterion_sum,
         optimizer.step()
 
         # accumulate loss
-        running_loss += loss.item() * image.size(0)
+        lstm_running_loss += loss_binary_cross_entropy.item() * image.size(0)
+        sum_running_loss += loss_mean_square_error * image.size(0)
         num_images += image.size(0)
 
         if batch_idx % 50 == 0 or batch_idx == len(train_loader) - 1:
-            epoch_loss = running_loss / num_images
-            lstm_prediction_np, label_lstm_np = np.array(lstm_prediction), np.array(label_lstm)
+            lstm_epoch_loss = lstm_running_loss / num_images
+            sum_epoch_loss = sum_running_loss / num_images
+            lstm_prediction_np, label_lstm_np = np.array(lstm_prediction.cpu().detach()), np.array(label_lstm.cpu().detach())
             precision, recall = calculate_precision_recall(lstm_prediction_np, label_lstm_np)
             auroc = draw_roc_curve(lstm_prediction_np, label_lstm_np, "train", epoch, batch_idx)
-            print('\nTraining phase: epoch: {} batch:{} Loss: {:.4f} Precision: {:.4f} Recall: {:.4f} AUROC: {:.4f}\n'.format(epoch, batch_idx, epoch_loss, precision, recall, auroc))
+            print('\nTraining phase: epoch: {} batch:{} LSTM Loss: {:.4f} SUM Loss: {:.4f} Precision: {:.4f} Recall: {:.4f} AUROC: {:.4f}\n'.format(epoch, batch_idx, lstm_epoch_loss, sum_epoch_loss, precision, recall, auroc))
 
 
 def val(model, test_loader, device, criterion_lstm, criterion_sum, epoch):
     model.eval()
-    running_loss = 0.0
+    lstm_running_loss = 0.0
+    sum_running_loss = 0.0
     num_images = 0
+    precision = 0.0
+    recall = 0.0
+    loss_mean_square_error = 0.0
+    lstm_prediction = None
+    label_lstm = None
 
     with torch.no_grad():
         for batch_idx, data in enumerate(tqdm(test_loader)):
@@ -69,17 +81,19 @@ def val(model, test_loader, device, criterion_lstm, criterion_sum, epoch):
             loss = loss_binary_cross_entropy + loss_mean_square_error
 
             # accumulate loss
-            running_loss += loss.item() * image.size(0)
+            lstm_running_loss += loss_binary_cross_entropy.item() * image.size(0)
+            sum_running_loss += loss_mean_square_error.item() * image.size(0)
             num_images += image.size(0)
 
-    test_loss = running_loss / len(test_loader.dataset)
+    lstm_test_loss = lstm_running_loss / len(test_loader.dataset)
+    sum_test_loss = sum_running_loss / len(test_loader.dataset)
 
-    lstm_prediction_np, label_lstm_np = np.array(lstm_prediction), np.array(label_lstm)
+    lstm_prediction_np, label_lstm_np = np.array(lstm_prediction.cpu().detach()), np.array(label_lstm.cpu().detach())
     precision, recall = calculate_precision_recall(lstm_prediction_np, label_lstm_np)
     auroc = draw_roc_curve(lstm_prediction_np, label_lstm_np, "test", epoch, 0)
-    print('\nTesting phase: epoch: {} Loss: {:.4f} Precision: {:.4f} Recall: {:.4f} AUROC: {:.4f}\n'.format(epoch, test_loss, precision, recall, auroc))
+    print('\nTesting phase: epoch: {} LSTM Loss: {:.4f} SUM Loss: {:.4f} Precision: {:.4f} Recall: {:.4f} AUROC: {:.4f}\n'.format(epoch, lstm_test_loss, sum_test_loss, precision, recall, auroc))
 
-    return test_loss
+    return loss_mean_square_error, recall
 
 
 def save_model(checkpoint_dir, model_checkpoint_name, model):
@@ -94,6 +108,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--train_path", help="train data path", required=True, type=str)
     parser.add_argument("--test_path", help="test data path", required=True, type=str)
+    parser.add_argument("--structure", help="the structure of the feature embedding model", required=True, type=str)
     parser.add_argument("--lr", help="learning rate", required=True, type=float)
     parser.add_argument("--momentum", help="momentum", required=True, type=float)
     parser.add_argument("--weight_decay", help="weight decay", required=True, type=float)
@@ -110,13 +125,13 @@ def main():
 
     device = torch.device("cuda")
 
-    train_dataset = UAVDatasetTuple(image_path=args.train_path, label_lstm_path="", label_sum_path="", mode="train")
-    test_dataset = UAVDatasetTuple(image_path=args.test_path, label_lstm_path="", label_sum_path="", mode="test")
+    train_dataset = UAVDatasetTuple(image_path=args.train_path, mode="train")
+    test_dataset = UAVDatasetTuple(image_path=args.test_path, mode="test")
     print("Total image tuples for train: ", len(train_dataset))
     print("Total image tuples for test: ", len(test_dataset))
 
     print("\nLet's use", torch.cuda.device_count(), "GPUs!\n")
-    model_ft = UAVModel()
+    model_ft = UAVModel(args.structure)
     model_ft = nn.DataParallel(model_ft)
 
     criterion_lstm = nn.BCELoss()
@@ -137,7 +152,7 @@ def main():
     # Decay LR by a factor of 0.1
     exp_lr_scheduler = lr_scheduler.StepLR(optimizer_ft, step_size=20, gamma=0.1)
 
-    train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True, num_workers=30)
+    train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=args.batch_size, shuffle=False, num_workers=30)
     test_loader = torch.utils.data.DataLoader(test_dataset, batch_size=args.batch_size, shuffle=False, num_workers=30)
 
     if args.eval_only:
@@ -151,12 +166,13 @@ def main():
         print('-' * 80)
         exp_lr_scheduler.step()
         train(model_ft, train_loader, device, optimizer_ft, criterion_lstm, criterion_sum, epoch)
-        loss = val(model_ft, test_loader, device, criterion_lstm, criterion_sum, 0)
-        if loss < best_loss:
+        loss_mean_square_error, recall = val(model_ft, test_loader, device, criterion_lstm, criterion_sum, 0)
+        if loss_mean_square_error < best_loss:
             save_model(checkpoint_dir=args.checkpoint_dir,
-                       model_checkpoint_name=args.model_checkpoint_name + "_" + loss,
+                       model_checkpoint_name=args.model_checkpoint_name +
+                                             str(loss_mean_square_error.cpu().detach()).replace('(', '_').replace(')', ''),
                        model=model_ft)
-            best_loss = loss
+            best_loss = loss_mean_square_error
 
 
 if __name__ == '__main__':
