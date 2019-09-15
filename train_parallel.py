@@ -124,7 +124,7 @@ def main():
 
     device = torch.device("cuda")
 
-    all_dataset = UAVDatasetTuple(image_path=args.train_path, mode="train")
+    all_dataset = UAVDatasetTuple(image_path=args.data_path, mode="train")
     train_size = int(0.8 * len(all_dataset))
     test_size = len(all_dataset) - train_size
     train_dataset, test_dataset = torch.utils.data.random_split(all_dataset, [train_size, test_size])
