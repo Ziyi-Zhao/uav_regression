@@ -10,6 +10,7 @@ basic_cnn
 
 --lr\
 0.001
+
 --momentum\
 0.9
 
