@@ -279,6 +279,6 @@ class UAVModel(nn.Module):
         # (seq, batch, w, w) -> (batch, seq, w, w)
         x_lstm = x_lstm.permute(1, 0, 2, 3)
 
-        x_sum = self._sumNet_forward(x_lstm)
-        x_sum = torch.squeeze(x_sum)
-        return x_lstm , x_sum
+        # x_sum = self._sumNet_forward(x_lstm)
+        # x_sum = torch.squeeze(x_sum)
+        return x_lstm# , x_sum
