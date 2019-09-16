@@ -9,7 +9,7 @@ from tqdm import tqdm
 from torch.optim import lr_scheduler
 from uav_model import UAVModel
 from data_loader import UAVDatasetTuple
-from utils import draw_roc_curve, calculate_precision_recall
+from utils import draw_roc_curve, calculate_precision_recall, visualize_testing_result
 
 
 os.environ["CUDA_VISIBLE_DEVICES"]="1"
@@ -50,7 +50,7 @@ def train(model, train_loader, device, optimizer, criterion_lstm, criterion_sum,
             lstm_epoch_loss = lstm_running_loss / num_images
             sum_epoch_loss = sum_running_loss / num_images
             lstm_prediction_np, label_lstm_np = np.array(lstm_prediction.cpu().detach()), np.array(label_lstm.cpu().detach())
-            precision, recall = calculate_precision_recall(lstm_prediction_np, label_lstm_np)
+            precision, recall = calculate_precision_recall(lstm_prediction_np, label_lstm_np, "train", batch_idx, epoch)
             auroc = draw_roc_curve(lstm_prediction_np, label_lstm_np, "train", epoch, batch_idx)
             print('\nTraining phase: epoch: {} batch:{} LSTM Loss: {:.4f} SUM Loss: {:.4f} Precision: {:.4f} Recall: {:.4f} AUROC: {:.4f}\n'.format(epoch, batch_idx, lstm_epoch_loss, sum_epoch_loss, precision, recall, auroc))
 
@@ -85,11 +85,14 @@ def val(model, test_loader, device, criterion_lstm, criterion_sum, epoch):
             sum_running_loss += loss_mean_square_error.item() * image.size(0)
             num_images += image.size(0)
 
+            # visualize the testing result
+            visualize_testing_result(sum_prediction, label_sum.data, batch_idx, epoch)
+
     lstm_test_loss = lstm_running_loss / len(test_loader.dataset)
     sum_test_loss = sum_running_loss / len(test_loader.dataset)
 
     lstm_prediction_np, label_lstm_np = np.array(lstm_prediction.cpu().detach()), np.array(label_lstm.cpu().detach())
-    precision, recall = calculate_precision_recall(lstm_prediction_np, label_lstm_np)
+    precision, recall = calculate_precision_recall(lstm_prediction_np, label_lstm_np, "test", batch_idx, epoch)
     auroc = draw_roc_curve(lstm_prediction_np, label_lstm_np, "test", epoch, 0)
     print('\nTesting phase: epoch: {} LSTM Loss: {:.4f} SUM Loss: {:.4f} Precision: {:.4f} Recall: {:.4f} AUROC: {:.4f}\n'.format(epoch, lstm_test_loss, sum_test_loss, precision, recall, auroc))
 
@@ -113,6 +116,7 @@ def main():
     parser.add_argument("--weight_decay", help="weight decay", required=True, type=float)
     parser.add_argument("--batch_size", help="batch size", required=True, type=int)
     parser.add_argument("--num_epochs", help="num_epochs", required=True, type=int)
+    parser.add_argument("--split_ratio", help="training/testing split ratio", required=True, type=float)
     parser.add_argument("--checkpoint_dir", help="checkpoint_dir", required=True, type=str)
     parser.add_argument("--model_checkpoint_name", help="model checkpoint name", required=True, type=str)
     parser.add_argument("--load_from_checkpoint", dest='load_from_checkpoint', action='store_true')
@@ -125,7 +129,7 @@ def main():
     device = torch.device("cuda")
 
     all_dataset = UAVDatasetTuple(image_path=args.data_path, mode="train")
-    train_size = int(0.8 * len(all_dataset))
+    train_size = int(args.split_ratio * len(all_dataset))
     test_size = len(all_dataset) - train_size
     train_dataset, test_dataset = torch.utils.data.random_split(all_dataset, [train_size, test_size])
     print("Total image tuples for train: ", len(train_dataset))
@@ -167,7 +171,7 @@ def main():
         print('-' * 80)
         exp_lr_scheduler.step()
         train(model_ft, train_loader, device, optimizer_ft, criterion_lstm, criterion_sum, epoch)
-        loss_mean_square_error, recall = val(model_ft, test_loader, device, criterion_lstm, criterion_sum, 0)
+        loss_mean_square_error, recall = val(model_ft, test_loader, device, criterion_lstm, criterion_sum, epoch)
         if loss_mean_square_error < best_loss:
             save_model(checkpoint_dir=args.checkpoint_dir,
                        model_checkpoint_name=args.model_checkpoint_name +
