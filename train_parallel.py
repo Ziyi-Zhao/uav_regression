@@ -9,13 +9,13 @@ from tqdm import tqdm
 from torch.optim import lr_scheduler
 from uav_model import UAVModel
 from data_loader import UAVDatasetTuple
-from utils import draw_roc_curve, calculate_precision_recall, visualize_testing_result
+from utils import draw_roc_curve, calculate_precision_recall, visualize_sum_testing_result, visualize_lstm_testing_result
 
 
 os.environ["CUDA_VISIBLE_DEVICES"]="1"
 
 
-def train(model, train_loader, device, optimizer, criterion_lstm, criterion_sum, epoch):
+def train(model, train_loader, device, optimizer, criterion_lstm, criterion_sum, weight, epoch):
     model.train()
     lstm_running_loss = 0.0
     sum_running_loss = 0.0
@@ -31,18 +31,22 @@ def train(model, train_loader, device, optimizer, criterion_lstm, criterion_sum,
 
         # model prediction
         lstm_prediction, sum_prediction = model(image)
+        # lstm_prediction = model(image)
         loss_binary_cross_entropy = criterion_lstm(lstm_prediction, label_lstm.data)
+        weight_ = weight[label_lstm.data.view(-1).long()].view_as(label_lstm)
+        loss_binary_cross_entropy_weighted = loss_binary_cross_entropy * weight_.to(device)
+        loss_binary_cross_entropy_weighted = loss_binary_cross_entropy_weighted.mean()
         loss_mean_square_error = criterion_sum(sum_prediction, label_sum.data)
 
         # combine the two way loss
-        loss = loss_binary_cross_entropy + loss_mean_square_error
+        loss = loss_binary_cross_entropy_weighted + loss_mean_square_error
 
         # update the weights within the model
         loss.backward()
         optimizer.step()
 
         # accumulate loss
-        lstm_running_loss += loss_binary_cross_entropy.item() * image.size(0)
+        lstm_running_loss += loss_binary_cross_entropy_weighted.item() * image.size(0)
         sum_running_loss += loss_mean_square_error * image.size(0)
         num_images += image.size(0)
 
@@ -55,7 +59,7 @@ def train(model, train_loader, device, optimizer, criterion_lstm, criterion_sum,
             print('\nTraining phase: epoch: {} batch:{} LSTM Loss: {:.4f} SUM Loss: {:.4f} Precision: {:.4f} Recall: {:.4f} AUROC: {:.4f}\n'.format(epoch, batch_idx, lstm_epoch_loss, sum_epoch_loss, precision, recall, auroc))
 
 
-def val(model, test_loader, device, criterion_lstm, criterion_sum, epoch):
+def val(model, test_loader, device, criterion_lstm, criterion_sum, weight, epoch):
     model.eval()
     lstm_running_loss = 0.0
     sum_running_loss = 0.0
@@ -74,19 +78,26 @@ def val(model, test_loader, device, criterion_lstm, criterion_sum, epoch):
 
             # model prediction
             lstm_prediction, sum_prediction = model(image)
+            # lstm_prediction = model(image)
             loss_binary_cross_entropy = criterion_lstm(lstm_prediction, label_lstm.data)
+            weight_ = weight[label_lstm.data.view(-1).long()].view_as(label_lstm)
+            loss_binary_cross_entropy_weighted = loss_binary_cross_entropy * weight_.to(device)
+            loss_binary_cross_entropy_weighted = loss_binary_cross_entropy_weighted.mean()
             loss_mean_square_error = criterion_sum(sum_prediction, label_sum.data)
 
             # combine the two way loss
-            loss = loss_binary_cross_entropy + loss_mean_square_error
+            loss = loss_binary_cross_entropy_weighted + loss_mean_square_error
 
             # accumulate loss
-            lstm_running_loss += loss_binary_cross_entropy.item() * image.size(0)
+            lstm_running_loss += loss_binary_cross_entropy_weighted.item() * image.size(0)
             sum_running_loss += loss_mean_square_error.item() * image.size(0)
             num_images += image.size(0)
 
-            # visualize the testing result
-            visualize_testing_result(sum_prediction, label_sum.data, batch_idx, epoch)
+            # visualize the lstm testing result
+            visualize_lstm_testing_result(lstm_prediction, label_lstm.data, batch_idx, epoch)
+
+            # visualize the sum testing result
+            visualize_sum_testing_result(sum_prediction, label_sum.data, batch_idx, epoch)
 
     lstm_test_loss = lstm_running_loss / len(test_loader.dataset)
     sum_test_loss = sum_running_loss / len(test_loader.dataset)
@@ -129,6 +140,8 @@ def main():
     device = torch.device("cuda")
 
     all_dataset = UAVDatasetTuple(image_path=args.data_path, mode="train")
+    positive_ratio, negative_ratio = all_dataset.get_class_count()
+    weight = torch.FloatTensor((positive_ratio, negative_ratio))
     train_size = int(args.split_ratio * len(all_dataset))
     test_size = len(all_dataset) - train_size
     train_dataset, test_dataset = torch.utils.data.random_split(all_dataset, [train_size, test_size])
@@ -139,7 +152,7 @@ def main():
     model_ft = UAVModel(args.structure)
     model_ft = nn.DataParallel(model_ft)
 
-    criterion_lstm = nn.BCELoss()
+    criterion_lstm = nn.BCELoss(reduce=False)
     criterion_sum = nn.MSELoss()
 
     if args.load_from_checkpoint:
@@ -161,7 +174,7 @@ def main():
     test_loader = torch.utils.data.DataLoader(test_dataset, batch_size=args.batch_size, shuffle=False, num_workers=30)
 
     if args.eval_only:
-        loss = val(model_ft, test_loader, device, criterion_lstm, criterion_sum, 0)
+        loss = val(model_ft, test_loader, device, criterion_lstm, criterion_sum, weight, 0)
         print('\nTesting phase: epoch: {} Loss: {:.4f}\n'.format(0, loss))
         return True
 
@@ -170,13 +183,13 @@ def main():
         print('Epoch {}/{}'.format(epoch, args.num_epochs - 1))
         print('-' * 80)
         exp_lr_scheduler.step()
-        train(model_ft, train_loader, device, optimizer_ft, criterion_lstm, criterion_sum, epoch)
-        loss_mean_square_error, recall = val(model_ft, test_loader, device, criterion_lstm, criterion_sum, epoch)
+        train(model_ft, train_loader, device, optimizer_ft, criterion_lstm, criterion_sum, weight, epoch)
+        loss_mean_square_error, recall = val(model_ft, test_loader, device, criterion_lstm, criterion_sum, weight, epoch)
         if loss_mean_square_error < best_loss:
-            save_model(checkpoint_dir=args.checkpoint_dir,
-                       model_checkpoint_name=args.model_checkpoint_name +
-                                             str(loss_mean_square_error.cpu().detach()).replace('(', '_').replace(')', ''),
-                       model=model_ft)
+            # save_model(checkpoint_dir=args.checkpoint_dir,
+            #            model_checkpoint_name=args.model_checkpoint_name +
+            #                                  str(loss_mean_square_error.cpu().detach()).replace('(', '_').replace(')', ''),
+            #            model=model_ft)
             best_loss = loss_mean_square_error
 
 

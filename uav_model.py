@@ -281,4 +281,4 @@ class UAVModel(nn.Module):
 
         x_sum = self._sumNet_forward(x_lstm)
         x_sum = torch.squeeze(x_sum)
-        return x_lstm, x_sum
+        return x_lstm , x_sum

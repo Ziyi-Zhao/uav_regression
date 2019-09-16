@@ -20,6 +20,7 @@ class UAVDatasetTuple(Dataset):
         self.label_lstm_md = list()
         self.label_sum_md = list()
         self._get_tuple()
+        # self._get_class_count()
 
     def _get_tuple(self):
         image_collection = np.load(self.image_path)
@@ -60,3 +61,16 @@ class UAVDatasetTuple(Dataset):
         sample = {'data': image, 'label_lstm': label_lstm, 'label_sum': label_cnn}
 
         return sample
+
+    def get_class_count(self):
+        total = len(self.label_lstm_md) * self.label_lstm_md[0].shape[0] * self.label_lstm_md[0].shape[1] * self.label_lstm_md[0].shape[2]
+        label = self.label_lstm_md
+        positive_class = 0
+        for label_lstm_md in label:
+            positive_class += np.sum(label_lstm_md)
+        print("The number of positive image pair is:", positive_class)
+        print("The number of negative image pair is:", total - positive_class)
+        positive_ratio = positive_class / total
+        negative_ratio = (total - positive_class) / total
+
+        return positive_ratio, negative_ratio
