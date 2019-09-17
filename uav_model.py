@@ -56,9 +56,15 @@ class UAVModel(nn.Module):
 
         # lstm model declaration
         # Note: the order is (seq, batch, feature) in pytorch
-        self.lstm = nn.LSTM(input_size=576, hidden_size=512, num_layers=2)
 
-        self.lstm_fc1 = nn.Linear(in_features=512, out_features=1024)
+        '''# for cnn
+        # self.lstm = nn.LSTM(input_size=576, hidden_size=512, num_layers=2)
+        # self.lstm_fc1 = nn.Linear(in_features=512, out_features=1024)
+        '''
+
+        # for pnet
+        self.lstm = nn.LSTM(input_size=1024, hidden_size=1024, num_layers=2)
+        self.lstm_fc1 = nn.Linear(in_features=1024, out_features=1024)
 
         self.lstm_bn1 = nn.BatchNorm1d(1024)
 
@@ -68,7 +74,12 @@ class UAVModel(nn.Module):
         self.sum_transpose1 = nn.ConvTranspose2d(in_channels=4, out_channels=2, kernel_size=3, stride=1)
         self.sum_transpose2 = nn.ConvTranspose2d(in_channels=2, out_channels=1, kernel_size=3, stride=1)
 
-        self.sum_fc1 = nn.Linear(in_features=576, out_features=3136)
+        '''# for cnn
+        # self.sum_fc1 = nn.Linear(in_features=576, out_features=3136)
+        '''
+
+        # for pnet
+        self.sum_fc1 = nn.Linear(in_features=1024, out_features=3136)
 
         self.sum_bn1 = nn.BatchNorm2d(32)
         self.sum_bn2 = nn.BatchNorm2d(16)
@@ -258,14 +269,18 @@ class UAVModel(nn.Module):
         return  x
 
     def forward(self, x):
-        # Note: the order is (seq, batch, feature) in pytorch
-        # (batch, seq, w, w, c) -> (seq, batch, c, w, w)
-        x = x.permute(1, 0, 4, 2, 3)
-
         embedding_list = list()
+        # Note: the order is (seq, batch, feature) in pytorch
+        '''# (batch, seq, w, w, c) -> (seq, batch, c, w, w)
+        # x = x.permute(1, 0, 4, 2, 3)
+        '''
+
+        # (batch, seq, w, c) -> (seq, batch, c, w)
+        x = x.permute(1, 0, 3, 2)
+
         for time_sample in x:
             if self.structure == "basic_cnn":
-                x_embedding = self._cnn_forward(time_sample)
+                x_embedding = self._cnn_forward(time_sample)                
             elif self.structure == "pnet":
                 x_embedding = self._pNet_forward(time_sample)
             elif self.structure == "rnet":
@@ -282,3 +297,15 @@ class UAVModel(nn.Module):
         # x_sum = self._sumNet_forward(x_lstm)
         # x_sum = torch.squeeze(x_sum)
         return x_lstm# , x_sum
+
+
+
+def s(x):
+    print('------- {0}\n'.format(list(x.size())))
+
+if __name__ == "__main__":
+    m = UAVModel("pnet")
+    input = torch.randn(100, 60, 15, 4)
+    out = m(input)
+    print(out.shape)
+
