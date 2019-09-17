@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # Dir #
 ###################
 .venv/
@@ -19,3 +20,8 @@ log.*
 .DS_Store
 
 *.hdf5
+=======
+.venv/
+__pycache__/
+.vscode/
+>>>>>>> fc314ffee4c0c2079bf7ce6840ac335c1122adac
