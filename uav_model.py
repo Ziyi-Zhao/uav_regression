@@ -52,7 +52,25 @@ class UAVModel(nn.Module):
             self.pNet_bn2 = nn.BatchNorm1d(128)
             self.pNet_bn3 = nn.BatchNorm1d(1024)
         elif self.structure == "rnet":
-            pass
+            # conv
+            self.conv1 = torch.nn.Conv2d(in_channels=1, out_channels=32, kernel_size=5, padding=2)
+            self.conv2 = torch.nn.Conv2d(in_channels=32, out_channels=64, kernel_size=3, padding=1)
+            self.conv3 = torch.nn.Conv2d(in_channels=64, out_channels=32, kernel_size=3, padding=1)
+            self.conv4 = torch.nn.Conv2d(in_channels=32, out_channels=32, kernel_size=1)
+            self.conv5 = torch.nn.Conv2d(in_channels=16, out_channels=16, kernel_size=1)
+            self.conv6 = torch.nn.Conv2d(in_channels=4, out_channels=1, kernel_size=1)
+            # deconv
+            self.transpose1 = nn.ConvTranspose2d(in_channels=32, out_channels=16, kernel_size=2, stride=2)
+            self.transpose2 = nn.ConvTranspose2d(in_channels=16, out_channels=4, kernel_size=2, stride=2)
+            # bn
+            self.bn1 = nn.BatchNorm2d(32)
+            self.bn2 = nn.BatchNorm2d(64)
+            self.bn3 = nn.BatchNorm2d(32)
+            self.bn4 = nn.BatchNorm2d(32)
+            self.bn5 = nn.BatchNorm2d(16)
+            self.bn6 = nn.BatchNorm2d(16)
+            self.bn7 = nn.BatchNorm2d(4)
+            # self.bn5 = nn.BatchNorm1d(256)
 
         # lstm model declaration
         # Note: the order is (seq, batch, feature) in pytorch
@@ -183,7 +201,39 @@ class UAVModel(nn.Module):
     # RouteNet for the feature extraction
     # Reference: https://research.nvidia.com/sites/default/files/pubs/2018-11_RouteNet%3A-routability-prediction/a80-xie.pdf
     def _rNet_froward(self, x):
-        pass
+        # 1->32
+        x = self.conv1(x)
+        x = self.bn1(x)
+        x = self.relu(input=x)
+        x = self.maxpool(x)
+        # 32->64
+        x = self.conv2(x)
+        x = self.bn2(x)
+        x = self.relu(x)
+        x = self.maxpool(x)
+        # 64->32
+        x = self.conv3(x)
+        x = self.bn3(x)
+        x = self.relu(x)
+        # 32->32
+        x = self.conv4(x)
+        x = self.bn4(x)
+        x = self.relu(x)
+        # 32->16
+        x = self.transpose1(x)
+        x = self.bn5(x)
+        x = self.relu(x)
+        # 16->16
+        x = self.conv5(x)
+        x = self.bn6(x)
+        x = self.relu(x)
+        # 16->4
+        x = self.transpose2(x)
+        x = self.bn7(x)
+        x = self.relu(x)
+        # 4->1
+        x = self.conv6(x)
+        x = torch.sigmoid(x)
 
     # Basic CNN model for the feature extraction
     def _cnn_forward(self, x):
