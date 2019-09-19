@@ -160,17 +160,18 @@ class UAVModel(nn.Module):
             torch.nn.init.normal_(self.rnet_transpose2.weight, std=0.1)
             torch.nn.init.constant_(self.rnet_transpose2.bias, val=0.0)
 
-        # initialize the parameters within the lstm model
-        torch.nn.init.normal_(self.lstm.weight_hh_l0, std=0.1)
-        torch.nn.init.constant_(self.lstm.bias_hh_l0, val=0.0)
-        torch.nn.init.normal_(self.lstm.weight_ih_l0, std=0.1)
-        torch.nn.init.constant_(self.lstm.bias_ih_l0, val=0.0)
-        torch.nn.init.normal_(self.lstm.weight_hh_l1, std=0.1)
-        torch.nn.init.constant_(self.lstm.bias_hh_l1, val=0.0)
-        torch.nn.init.normal_(self.lstm.weight_ih_l1, std=0.1)
-        torch.nn.init.constant_(self.lstm.bias_ih_l1, val=0.0)
-        torch.nn.init.normal_(self.lstm_fc1.weight, std=0.1)
-        torch.nn.init.constant_(self.lstm_fc1.bias, val=0.0)
+        if self.structure == 'basic_cnn' or self.structure == 'pnet':
+            # initialize the parameters within the lstm model
+            torch.nn.init.normal_(self.lstm.weight_hh_l0, std=0.1)
+            torch.nn.init.constant_(self.lstm.bias_hh_l0, val=0.0)
+            torch.nn.init.normal_(self.lstm.weight_ih_l0, std=0.1)
+            torch.nn.init.constant_(self.lstm.bias_ih_l0, val=0.0)
+            torch.nn.init.normal_(self.lstm.weight_hh_l1, std=0.1)
+            torch.nn.init.constant_(self.lstm.bias_hh_l1, val=0.0)
+            torch.nn.init.normal_(self.lstm.weight_ih_l1, std=0.1)
+            torch.nn.init.constant_(self.lstm.bias_ih_l1, val=0.0)
+            torch.nn.init.normal_(self.lstm_fc1.weight, std=0.1)
+            torch.nn.init.constant_(self.lstm_fc1.bias, val=0.0)
 
         # initialize the parameters within the sumNet model
         torch.nn.init.normal_(self.sum_conv1.weight, std=0.1)
@@ -231,12 +232,12 @@ class UAVModel(nn.Module):
         x = self.rnet_conv1(x)
         x = self.rnet_bn1(x)
         x = self.relu(input=x)
-        x = self.maxpool(x)
+        x = self.max_pool(x)
         # 32->64
         x = self.rnet_conv2(x)
         x = self.rnet_bn2(x)
         x = self.relu(x)
-        x = self.maxpool(x)
+        x = self.max_pool(x)
         # 64->32
         x = self.rnet_conv3(x)
         x = self.rnet_bn3(x)
@@ -375,5 +376,7 @@ class UAVModel(nn.Module):
             # x_sum = torch.squeeze(x_sum)
             return x_lstm  # , x_sum
         elif self.structure == "rnet":
+            x = x.view(-1, 1, x.shape[1], x.shape[2])
+
             x = self._rNet_froward(x)
             return x

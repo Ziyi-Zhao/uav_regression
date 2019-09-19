@@ -23,17 +23,23 @@ class UAVDatasetTuple(Dataset):
         self._get_tuple()
 
     def _get_tuple(self):
-        image_collection = np.load(self.image_path)
-        label_lstm_collection = np.load(self.label_lstm_path)
-        label_sum_collection = np.load(self.label_sum_path)
 
-        assert len(image_collection) == len(label_lstm_collection) == len(label_sum_collection), "image size and label size is not identical"
+        image_collection = np.load(self.image_path)
+        if self.structure == 'basic_cnn' or self.structure == 'pnet':
+            label_lstm_collection = np.load(self.label_lstm_path)
+            label_sum_collection = np.load(self.label_sum_path)
+        elif self.structure == 'rnet':
+            label_sum_collection = np.load(self.label_sum_path)
+        # assert len(image_collection) == len(label_lstm_collection) == len(label_sum_collection), "image size and label size is not identical"
 
         for idx, _ in enumerate(image_collection):
-            self.image_md.append(image_collection[idx])
-            self.label_lstm_md.append(label_lstm_collection[idx])
-            self.label_sum_md.append(label_sum_collection[idx])
-
+            if self.structure == 'basic_cnn' or self.structure == 'pnet':
+                self.image_md.append(image_collection[idx])
+                self.label_lstm_md.append(label_lstm_collection[idx])
+                self.label_sum_md.append(label_sum_collection[idx])
+            elif self.structure == 'rnet':
+                self.image_md.append(image_collection[idx])
+                self.label_sum_md.append(label_sum_collection[idx])
     def _prepare_data(self, idx):
         image_md = self.image_md[idx]
         return  image_md
@@ -48,7 +54,7 @@ class UAVDatasetTuple(Dataset):
             return label_sum_md
 
     def __len__(self):
-        assert len(self.image_md) == len(self.label_lstm_md) == len(self.label_sum_md), "image size and label size is not identical"
+        # assert len(self.image_md) == len(self.label_lstm_md) == len(self.label_sum_md), "image size and label size is not identical"
         return len(self.image_md)
 
     def __getitem__(self, idx):
