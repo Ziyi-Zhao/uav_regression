@@ -3,7 +3,7 @@ The code repository for the UAV density regression task
 
 # training parameters
 --data_path\
-/home/zzhao/UAV_POSTPROCESS/data/training_data_trajectory.npy
+/data/zzhao/uav_regression/rnet/training_data_trajectory.np
 
 --structure\
 basic_cnn

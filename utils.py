@@ -97,6 +97,8 @@ def visualize_sum_testing_result(prediction, label, batch_id, epoch):
     if not os.path.exists("/home/zzhao/data/uav_regression/testing_result/epoch_" + str(epoch) + "/sum"):
         os.mkdir("/home/zzhao/data/uav_regression/testing_result/epoch_" + str(epoch) + "/sum")
     for idx, _ in enumerate(prediction):
-        torchvision.utils.save_image(prediction[idx], "/home/zzhao/data/uav_regression/testing_result/epoch_" + str(epoch) + "/sum" + "/" + str(idx + batch_id * 32) +  "_prediction.png")
+        output = prediction[idx]
+        output[output < 0.3] = 0
+        torchvision.utils.save_image(output, "/home/zzhao/data/uav_regression/testing_result/epoch_" + str(epoch) + "/sum" + "/" + str(idx + batch_id * 32) +  "_prediction.png")
         torchvision.utils.save_image(label[idx], "/home/zzhao/data/uav_regression/testing_result/epoch_" + str(epoch) + "/sum" + "/" + str(idx + batch_id * 32) + "_label.png")
 
