@@ -23,14 +23,13 @@ def train(model, train_loader, device, structure, optimizer, criterion_lstm, cri
     num_images = 0
 
     for batch_idx, data in enumerate(tqdm(train_loader)):
-        image = data['data'].to(device)
-        label_lstm = data['label_lstm'].to(device)
-        label_sum = data['label_sum'].to(device)
-
         # zero the parameter gradients
         optimizer.zero_grad()
 
         if structure == 'basic_cnn' or structure == 'pnet':
+            image = data['data'].to(device)
+            label_lstm = data['label_lstm'].to(device)
+            label_sum = data['label_sum'].to(device)
             # model prediction
             # lstm_prediction, sum_prediction = model(image)
             lstm_prediction = model(image)
@@ -65,6 +64,8 @@ def train(model, train_loader, device, structure, optimizer, criterion_lstm, cri
                     '\nTraining phase: epoch: {} batch:{} LSTM Loss: {:.4f} SUM Loss: {:.4f} Precision: {:.4f} Recall: {:.4f} AUROC: {:.4f}\n'.format(
                         epoch, batch_idx, lstm_epoch_loss, 0, precision, recall, auroc))
         elif structure == 'rnet':
+            image = data['data'].to(device)
+            label_sum = data['label_sum'].to(device)
             # model prediction
             sum_prediction = model(image)
             loss_mean_square_error = criterion_sum(sum_prediction, label_sum.data)
@@ -96,11 +97,10 @@ def val(model, test_loader, device, structure, criterion_lstm, criterion_sum, we
 
     with torch.no_grad():
         for batch_idx, data in enumerate(tqdm(test_loader)):
-            image = data['data'].to(device)
-            label_lstm = data['label_lstm'].to(device)
-            label_sum = data['label_sum'].to(device)
-
             if structure == 'basic_cnn' or structure == 'pnet':
+                image = data['data'].to(device)
+                label_lstm = data['label_lstm'].to(device)
+                label_sum = data['label_sum'].to(device)
                 # model prediction
                 # lstm_prediction, sum_prediction = model(image)
                 lstm_prediction = model(image)
@@ -121,6 +121,8 @@ def val(model, test_loader, device, structure, criterion_lstm, criterion_sum, we
                 # visualize the sum testing result
                 # visualize_sum_testing_result(sum_prediction, label_sum.data, batch_idx, epoch)
             elif structure == 'rnet':
+                image = data['data'].to(device)
+                label_sum = data['label_sum'].to(device)
                 # model prediction
                 sum_prediction = model(image)
 
@@ -180,7 +182,7 @@ def main():
 
     device = torch.device("cuda")
 
-    all_dataset = UAVDatasetTuple(image_path=args.data_path, mode="train")
+    all_dataset = UAVDatasetTuple(image_path=args.data_path, mode="train", structure=args.structure)
     positive_ratio, negative_ratio = all_dataset.get_class_count()
     weight = torch.FloatTensor((positive_ratio, negative_ratio))
     train_size = int(args.split_ratio * len(all_dataset))
