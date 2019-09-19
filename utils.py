@@ -84,6 +84,8 @@ def visualize_lstm_testing_result(prediction, label, batch_id, epoch):
         prediction_lstm = torch.sum(prediction[idx], dim=0)
         label_lstm = torch.sum(label[idx], dim=0)
         prediction_lstm = (prediction_lstm - torch.min(prediction_lstm)) / (torch.max(prediction_lstm) - torch.min(prediction_lstm))
+        # prediction_lstm[prediction_lstm < 0.5] = 0
+        label_lstm = (label_lstm - torch.min(label_lstm)) / (torch.max(label_lstm) - torch.min(label_lstm))
         torchvision.utils.save_image(prediction_lstm, "/home/zzhao/data/uav_regression/testing_result/epoch_" + str(epoch) + "/lstm/" + str(idx + batch_id * 32) +  "_prediction.png")
         torchvision.utils.save_image(label_lstm, "/home/zzhao/data/uav_regression/testing_result/epoch_" + str(epoch) + "/lstm/" + str(idx + batch_id * 32) + "_label.png")
 

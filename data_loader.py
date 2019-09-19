@@ -51,14 +51,14 @@ class UAVDatasetTuple(Dataset):
 
         try:
             image = self._prepare_data(idx)
-            label_lstm, label_cnn = self._get_label(idx)
+            label_lstm, label_sum = self._get_label(idx)
         except Exception as e:
             print('error encountered while loading {}'.format(idx))
             print("Unexpected error:", sys.exc_info()[0])
             print(e)
             raise
 
-        sample = {'data': image, 'label_lstm': label_lstm, 'label_sum': label_cnn}
+        sample = {'data': image, 'label_lstm': label_lstm, 'label_sum': label_sum}
 
         return sample
 
