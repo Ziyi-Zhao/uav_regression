@@ -92,4 +92,14 @@ class UAVDatasetTuple(Dataset):
 
             return positive_ratio, negative_ratio
         elif self.structure == 'rnet':
-            return 0, 0
+            total = len(self.label_sum_md) * self.label_sum_md[0].shape[0] * self.label_sum_md[0].shape[1]
+            label = self.label_sum_md
+            positive_class = 0
+            for label_sum_md in label:
+                positive_class += np.sum(label_sum_md)
+            print("The number of positive image pair is:", positive_class)
+            print("The number of negative image pair is:", total - positive_class)
+            positive_ratio = positive_class / total
+            negative_ratio = (total - positive_class) / total
+
+            return positive_ratio, negative_ratio
