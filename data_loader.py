@@ -5,6 +5,7 @@ import torch
 import torchvision
 import itertools
 import numpy as np
+import matplotlib.pyplot as plt
 
 from utils import read_pickle, dump_pickle
 from torchvision import transforms
@@ -30,6 +31,18 @@ class UAVDatasetTuple(Dataset):
             label_sum_collection = np.load(self.label_sum_path)
         elif self.structure == 'rnet':
             label_sum_collection = np.load(self.label_sum_path)
+
+            # probability = image_collection[0, :, :, 0]
+            # traffic_pattern = image_collection[0, :, :, 1]
+            # label = label_sum_collection[0, :, :]
+            #
+            # plt.imshow(probability)
+            # plt.savefig("/home/zzhao/tmp_probability.png")
+            # plt.imshow(traffic_pattern)
+            # plt.savefig("/home/zzhao/tmp_traffic_pattern.png")
+            # plt.imshow(label)
+            # plt.savefig("/home/zzhao/tmp_label.png")
+
         # assert len(image_collection) == len(label_lstm_collection) == len(label_sum_collection), "image size and label size is not identical"
 
         for idx, _ in enumerate(image_collection):

@@ -69,7 +69,7 @@ class UAVModel(nn.Module):
             self.lstm_bn1 = nn.BatchNorm1d(1024)
         elif self.structure == "rnet":
             # conv
-            self.rnet_conv1 = torch.nn.Conv2d(in_channels=1, out_channels=32, kernel_size=5, padding=2)
+            self.rnet_conv1 = torch.nn.Conv2d(in_channels=2, out_channels=32, kernel_size=5, padding=2)
             self.rnet_conv2 = torch.nn.Conv2d(in_channels=32, out_channels=64, kernel_size=3, padding=1)
             self.rnet_conv3 = torch.nn.Conv2d(in_channels=64, out_channels=32, kernel_size=3, padding=1)
             self.rnet_conv4 = torch.nn.Conv2d(in_channels=32, out_channels=32, kernel_size=1)
@@ -376,7 +376,7 @@ class UAVModel(nn.Module):
             # x_sum = torch.squeeze(x_sum)
             return x_lstm  # , x_sum
         elif self.structure == "rnet":
-            x = x.view(-1, 1, x.shape[1], x.shape[2])
+            x = x.permute(0, 3, 1, 2)
 
             x = self._rNet_froward(x)
-            return x
+            return x.squeeze()
