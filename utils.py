@@ -97,15 +97,15 @@ def visualize_sum_testing_result(prediction, label, batch_id, epoch):
     if not os.path.exists("/home/zzhao/data/uav_regression/testing_result/epoch_" + str(epoch) + "/sum"):
         os.mkdir("/home/zzhao/data/uav_regression/testing_result/epoch_" + str(epoch) + "/sum")
     for idx, _ in enumerate(prediction):
-        prediction_output = prediction[idx].cpu().detach().numpy()
-        label_output = label[idx].cpu().detach().numpy()
+        prediction_output = prediction[idx]#.cpu().detach().numpy()
+        label_output = label[idx]#.cpu().detach().numpy()
         prediction_output[prediction_output < 0.30] = 0
         # output[output >= 0.50] = 1
-        plt.imshow(prediction_output)
-        plt.savefig("/home/zzhao/data/uav_regression/testing_result/epoch_" + str(epoch) + "/sum" + "/" + str(idx + batch_id * 32) +  "_prediction.png")
-        plt.imshow(label_output)
-        plt.savefig("/home/zzhao/data/uav_regression/testing_result/epoch_" + str(epoch) + "/sum" + "/" + str(idx + batch_id * 32) +  "_label.png")
-        plt.close()
-        # torchvision.utils.save_image(prediction_output, "/home/zzhao/data/uav_regression/testing_result/epoch_" + str(epoch) + "/sum" + "/" + str(idx + batch_id * 32) +  "_prediction.png")
-        # torchvision.utils.save_image(label_output, "/home/zzhao/data/uav_regression/testing_result/epoch_" + str(epoch) + "/sum" + "/" + str(idx + batch_id * 32) +  "_label.png")
+        # plt.imshow(prediction_output)
+        # plt.savefig("/home/zzhao/data/uav_regression/testing_result/epoch_" + str(epoch) + "/sum" + "/" + str(idx + batch_id * 32) +  "_prediction.png")
+        # plt.imshow(label_output)
+        # plt.savefig("/home/zzhao/data/uav_regression/testing_result/epoch_" + str(epoch) + "/sum" + "/" + str(idx + batch_id * 32) +  "_label.png")
+        # plt.close()
+        torchvision.utils.save_image(prediction_output, "/home/zzhao/data/uav_regression/testing_result/epoch_" + str(epoch) + "/sum" + "/" + str(idx + batch_id * 32) +  "_prediction.png")
+        torchvision.utils.save_image(label_output, "/home/zzhao/data/uav_regression/testing_result/epoch_" + str(epoch) + "/sum" + "/" + str(idx + batch_id * 32) +  "_label.png")
 

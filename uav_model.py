@@ -88,6 +88,7 @@ class UAVModel(nn.Module):
             self.rnet_bn5 = nn.BatchNorm2d(16)
             self.rnet_bn6 = nn.BatchNorm2d(16)
             self.rnet_bn7 = nn.BatchNorm2d(4)
+            self.rnet_bn8 = nn.BatchNorm2d(1)
 
         # sumNet model declaration
         self.sum_conv1 = nn.Conv2d(in_channels=60, out_channels=32, kernel_size=3, stride=1)
@@ -231,7 +232,7 @@ class UAVModel(nn.Module):
         # 1->32
         x = self.rnet_conv1(x)
         x = self.rnet_bn1(x)
-        x = self.relu(input=x)
+        x = self.relu(x)
         x = self.max_pool(x)
         # 32->64
         x = self.rnet_conv2(x)
@@ -260,7 +261,9 @@ class UAVModel(nn.Module):
         x = self.relu(x)
         # 4->1
         x = self.rnet_conv6(x)
-        x = torch.sigmoid(x)
+        x = self.rnet_bn8(x)
+        x = self.relu(x)
+        # x = torch.sigmoid(x)
         return x
 
     # Basic CNN model for the feature extraction
