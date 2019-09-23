@@ -12,7 +12,7 @@ from data_loader import UAVDatasetTuple
 from utils import draw_roc_curve, calculate_precision_recall, visualize_sum_testing_result, visualize_lstm_testing_result
 
 
-os.environ["CUDA_VISIBLE_DEVICES"]="3"
+os.environ["CUDA_VISIBLE_DEVICES"]="0"
 
 
 def train(model, train_loader, device, structure, optimizer, criterion_lstm, criterion_sum, weight, epoch):

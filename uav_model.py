@@ -73,7 +73,7 @@ class UAVModel(nn.Module):
             self.rnet_conv2 = torch.nn.Conv2d(in_channels=32, out_channels=64, kernel_size=3, padding=1)
             self.rnet_conv3 = torch.nn.Conv2d(in_channels=64, out_channels=32, kernel_size=3, padding=1)
             self.rnet_conv4 = torch.nn.Conv2d(in_channels=32, out_channels=32, kernel_size=1)
-            self.rnet_conv5 = torch.nn.Conv2d(in_channels=16, out_channels=16, kernel_size=1)
+            self.rnet_conv5 = torch.nn.Conv2d(in_channels=48, out_channels=16, kernel_size=1)
             self.rnet_conv6 = torch.nn.Conv2d(in_channels=4, out_channels=1, kernel_size=1)
 
             # deconv
@@ -234,6 +234,7 @@ class UAVModel(nn.Module):
         x = self.rnet_bn1(x)
         x = self.relu(x)
         x = self.max_pool(x)
+        x_shortcut = x
         # 32->64
         x = self.rnet_conv2(x)
         x = self.rnet_bn2(x)
@@ -251,7 +252,11 @@ class UAVModel(nn.Module):
         x = self.rnet_transpose1(x)
         x = self.rnet_bn5(x)
         x = self.relu(x)
-        # 16->16
+
+        # shortcut path
+        x = torch.cat([x, x_shortcut], dim=1)
+
+        # 16 + 32->16
         x = self.rnet_conv5(x)
         x = self.rnet_bn6(x)
         x = self.relu(x)

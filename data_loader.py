@@ -32,10 +32,10 @@ class UAVDatasetTuple(Dataset):
         elif self.structure == 'rnet':
             label_sum_collection = np.load(self.label_sum_path)
 
-            # probability = image_collection[0, :, :, 0]
-            # traffic_pattern = image_collection[0, :, :, 1]
-            # label = label_sum_collection[0, :, :]
-            #
+            probability = image_collection[0, :, :, 0]
+            traffic_pattern = image_collection[0, :, :, 1]
+            label = label_sum_collection[0, :, :]
+
             # plt.imshow(probability)
             # plt.savefig("/home/zzhao/tmp_probability.png")
             # plt.imshow(traffic_pattern)
