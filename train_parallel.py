@@ -12,10 +12,10 @@ from data_loader import UAVDatasetTuple
 from utils import draw_roc_curve, calculate_precision_recall, visualize_sum_testing_result, visualize_lstm_testing_result
 
 
-os.environ["CUDA_VISIBLE_DEVICES"]="0"
+os.environ["CUDA_VISIBLE_DEVICES"]="1"
 
 
-def train(model, train_loader, device, structure, optimizer, criterion_lstm, criterion_sum, weight, epoch):
+def train(model, train_loader, device, structure, optimizer, criterion, weight, epoch):
     model.train()
     lstm_running_loss = 0.0
     sum_running_loss = 0.0
@@ -28,47 +28,31 @@ def train(model, train_loader, device, structure, optimizer, criterion_lstm, cri
 
         if structure == 'basic_cnn' or structure == 'pnet':
             image = data['data'].to(device)
-            label_lstm = data['label_lstm'].to(device)
             label_sum = data['label_sum'].to(device)
             # model prediction
-            # lstm_prediction, sum_prediction = model(image)
-            lstm_prediction = model(image)
-            loss_binary_cross_entropy = criterion_lstm(lstm_prediction, label_lstm.data)
-            weight_ = weight[label_lstm.data.view(-1).long()].view_as(label_lstm)
-            loss_binary_cross_entropy_weighted = loss_binary_cross_entropy * weight_.to(device)
-            loss_binary_cross_entropy_weighted = loss_binary_cross_entropy_weighted.mean()
-            # loss_mean_square_error = criterion_sum(sum_prediction, label_sum.data)
-            # combine the two way loss
-            loss = loss_binary_cross_entropy_weighted  # + loss_mean_square_error
+            prediction = model(image)
+            loss_mean_square_error = criterion(prediction, label_sum.data)
+            # loss
+            loss = loss_mean_square_error
 
             # update the weights within the model
             loss.backward()
             optimizer.step()
 
             # accumulate loss
-            if loss_binary_cross_entropy_weighted.item() != 0.0:
-                lstm_running_loss += loss_binary_cross_entropy_weighted.item() * image.size(0)
-            # if loss_mean_square_error != 0.0:
-            #     sum_running_loss += loss_mean_square_error * image.size(0)
+            if loss_mean_square_error != 0.0:
+                sum_running_loss += loss_mean_square_error * image.size(0)
             num_images += image.size(0)
 
             if batch_idx % 50 == 0 or batch_idx == len(train_loader) - 1:
-                lstm_epoch_loss = lstm_running_loss / num_images
-                # sum_epoch_loss = sum_running_loss / num_images
-                lstm_prediction_np, label_lstm_np = np.array(lstm_prediction.cpu().detach()), np.array(
-                    label_lstm.cpu().detach())
-                precision, recall = calculate_precision_recall(lstm_prediction_np, label_lstm_np, "train", batch_idx,
-                                                               epoch)
-                auroc = draw_roc_curve(lstm_prediction_np, label_lstm_np, "train", epoch, batch_idx)
-                print(
-                    '\nTraining phase: epoch: {} batch:{} LSTM Loss: {:.4f} SUM Loss: {:.4f} Precision: {:.4f} Recall: {:.4f} AUROC: {:.4f}\n'.format(
-                        epoch, batch_idx, lstm_epoch_loss, 0, precision, recall, auroc))
+                sum_epoch_loss = sum_running_loss / num_images
+                print('\nTraining phase: epoch: {} batch:{} Loss: {:.4f}\n'.format(epoch, batch_idx, sum_epoch_loss))
         elif structure == 'rnet':
             image = data['data'].to(device)
             label_sum = data['label_sum'].to(device)
             # model prediction
-            sum_prediction = model(image)
-            loss_mean_square_error = criterion_sum(sum_prediction, label_sum.data)
+            prediction = model(image)
+            loss_mean_square_error = criterion(prediction, label_sum.data)
             # final loss
             loss = loss_mean_square_error
 
@@ -81,71 +65,48 @@ def train(model, train_loader, device, structure, optimizer, criterion_lstm, cri
             num_images += image.size(0)
             if batch_idx % 50 == 0 or batch_idx == len(train_loader) - 1:
                 sum_epoch_loss = sum_running_loss / num_images
-                print('\nTraining phase: epoch: {} batch:{} SUM Loss: {:.4f}\n'.format(epoch, batch_idx, sum_epoch_loss))
+                print('\nTraining phase: epoch: {} batch:{} Loss: {:.4f}\n'.format(epoch, batch_idx, sum_epoch_loss))
 
-def val(model, test_loader, device, structure, criterion_lstm, criterion_sum, weight, epoch):
+def val(model, test_loader, device, structure, criterion, weight, epoch):
     model.eval()
-    lstm_running_loss = 0.0
     sum_running_loss = 0.0
     num_images = 0
-    precision = 0.0
-    recall = 0.0
-    loss_mean_square_error = 0.0
     loss = 0.0
-    lstm_prediction = None
-    label_lstm = None
 
     with torch.no_grad():
         for batch_idx, data in enumerate(tqdm(test_loader)):
             if structure == 'basic_cnn' or structure == 'pnet':
                 image = data['data'].to(device)
-                label_lstm = data['label_lstm'].to(device)
                 label_sum = data['label_sum'].to(device)
                 # model prediction
-                # lstm_prediction, sum_prediction = model(image)
-                lstm_prediction = model(image)
-                loss_binary_cross_entropy = criterion_lstm(lstm_prediction, label_lstm.data)
-                weight_ = weight[label_lstm.data.view(-1).long()].view_as(label_lstm)
-                loss_binary_cross_entropy_weighted = loss_binary_cross_entropy * weight_.to(device)
-                loss_binary_cross_entropy_weighted = loss_binary_cross_entropy_weighted.mean()
-                # loss_mean_square_error = criterion_sum(sum_prediction, label_sum.data)
-
-                # accumulate loss
-                lstm_running_loss += loss_binary_cross_entropy_weighted.item() * image.size(0)
-                # sum_running_loss += loss_mean_square_error.item() * image.size(0)
-                num_images += image.size(0)
-
-                # visualize the lstm testing result
-                visualize_lstm_testing_result(lstm_prediction, label_lstm.data, batch_idx, epoch)
-
-                # visualize the sum testing result
-                # visualize_sum_testing_result(sum_prediction, label_sum.data, batch_idx, epoch)
-            elif structure == 'rnet':
-                image = data['data'].to(device)
-                label_sum = data['label_sum'].to(device)
-                # model prediction
-                sum_prediction = model(image)
-
-                loss_mean_square_error = criterion_sum(sum_prediction, label_sum.data)
+                prediction = model(image)
+                loss_mean_square_error = criterion(prediction, label_sum.data)
 
                 # accumulate loss
                 sum_running_loss += loss_mean_square_error.item() * image.size(0)
                 num_images += image.size(0)
 
                 # visualize the sum testing result
-                visualize_sum_testing_result(sum_prediction, label_sum.data, batch_idx, epoch)
+                visualize_sum_testing_result(prediction, label_sum.data, batch_idx, epoch)
+            elif structure == 'rnet':
+                image = data['data'].to(device)
+                label_sum = data['label_sum'].to(device)
+                # model prediction
+                prediction = model(image)
+
+                loss_mean_square_error = criterion(prediction, label_sum.data)
+
+                # accumulate loss
+                sum_running_loss += loss_mean_square_error.item() * image.size(0)
+                num_images += image.size(0)
+
+                # visualize the sum testing result
+                visualize_sum_testing_result(prediction, label_sum.data, batch_idx, epoch)
 
         if structure == 'basic_cnn' or structure == 'pnet':
-            lstm_test_loss = lstm_running_loss / len(test_loader.dataset)
-            # sum_test_loss = sum_running_loss / len(test_loader.dataset)
-            loss = lstm_test_loss# + sum_test_loss
-            lstm_prediction_np, label_lstm_np = np.array(lstm_prediction.cpu().detach()), np.array(
-                label_lstm.cpu().detach())
-            precision, recall = calculate_precision_recall(lstm_prediction_np, label_lstm_np, "test", batch_idx, epoch)
-            auroc = draw_roc_curve(lstm_prediction_np, label_lstm_np, "test", epoch, 0)
-            print(
-                '\nTesting phase: epoch: {} LSTM Loss: {:.4f} SUM Loss: {:.4f} Precision: {:.4f} Recall: {:.4f} AUROC: {:.4f}\n'.format(
-                    epoch, lstm_test_loss, 0, precision, recall, auroc))
+            sum_test_loss = sum_running_loss / len(test_loader.dataset)
+            loss = sum_test_loss
+            print('\nTesting phase: epoch: {} Loss: {:.4f}\n'.format(epoch, sum_test_loss))
         elif structure == 'rnet':
             sum_test_loss = sum_running_loss / len(test_loader.dataset)
             loss = sum_test_loss
@@ -195,8 +156,8 @@ def main():
     model_ft = UAVModel(args.structure)
     model_ft = nn.DataParallel(model_ft)
 
-    criterion_lstm = nn.BCELoss(reduce=False)
-    criterion_sum = nn.MSELoss(reduction='sum')
+    # Define criterion
+    criterion = nn.MSELoss(reduction='sum')
 
     if args.load_from_checkpoint:
         chkpt_model_path = os.path.join(args.checkpoint_dir, args.model_checkpoint_name)
@@ -217,7 +178,7 @@ def main():
     test_loader = torch.utils.data.DataLoader(test_dataset, batch_size=args.batch_size, shuffle=False, num_workers=30)
 
     if args.eval_only:
-        loss = val(model_ft, test_loader, device, args.structure, criterion_lstm, criterion_sum, weight, 0)
+        loss = val(model_ft, test_loader, device, args.structure, criterion, weight, 0)
         print('\nTesting phase: epoch: {} Loss: {:.4f}\n'.format(0, loss))
         return True
 
@@ -226,8 +187,8 @@ def main():
         print('Epoch {}/{}'.format(epoch, args.num_epochs - 1))
         print('-' * 80)
         exp_lr_scheduler.step()
-        train(model_ft, train_loader, device, args.structure, optimizer_ft, criterion_lstm, criterion_sum, weight, epoch)
-        loss = val(model_ft, test_loader, device, args.structure, criterion_lstm, criterion_sum, weight, epoch)
+        train(model_ft, train_loader, device, args.structure, optimizer_ft, criterion, weight, epoch)
+        loss = val(model_ft, test_loader, device, args.structure, criterion, weight, epoch)
         if loss < best_loss:
             save_model(checkpoint_dir=args.checkpoint_dir,
                        model_checkpoint_name=args.model_checkpoint_name + '_' + str(loss),
