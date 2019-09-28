@@ -17,7 +17,6 @@ os.environ["CUDA_VISIBLE_DEVICES"]="1"
 
 def train(model, train_loader, device, structure, optimizer, criterion, weight, epoch):
     model.train()
-    lstm_running_loss = 0.0
     sum_running_loss = 0.0
     loss = 0.0
     num_images = 0
@@ -26,7 +25,7 @@ def train(model, train_loader, device, structure, optimizer, criterion, weight, 
         # zero the parameter gradients
         optimizer.zero_grad()
 
-        if structure == 'basic_cnn' or structure == 'pnet':
+        if structure == 'pnet':
             image = data['data'].to(device)
             label_sum = data['label_sum'].to(device)
             # model prediction
@@ -67,6 +66,7 @@ def train(model, train_loader, device, structure, optimizer, criterion, weight, 
                 sum_epoch_loss = sum_running_loss / num_images
                 print('\nTraining phase: epoch: {} batch:{} Loss: {:.4f}\n'.format(epoch, batch_idx, sum_epoch_loss))
 
+
 def val(model, test_loader, device, structure, criterion, weight, epoch):
     model.eval()
     sum_running_loss = 0.0
@@ -75,7 +75,7 @@ def val(model, test_loader, device, structure, criterion, weight, epoch):
 
     with torch.no_grad():
         for batch_idx, data in enumerate(tqdm(test_loader)):
-            if structure == 'basic_cnn' or structure == 'pnet':
+            if structure == 'pnet':
                 image = data['data'].to(device)
                 label_sum = data['label_sum'].to(device)
                 # model prediction
@@ -103,7 +103,7 @@ def val(model, test_loader, device, structure, criterion, weight, epoch):
                 # visualize the sum testing result
                 visualize_sum_testing_result(prediction, label_sum.data, batch_idx, epoch)
 
-        if structure == 'basic_cnn' or structure == 'pnet':
+        if structure == 'pnet':
             sum_test_loss = sum_running_loss / len(test_loader.dataset)
             loss = sum_test_loss
             print('\nTesting phase: epoch: {} Loss: {:.4f}\n'.format(epoch, sum_test_loss))

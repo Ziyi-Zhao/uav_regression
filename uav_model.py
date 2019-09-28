@@ -17,26 +17,7 @@ class UAVModel(nn.Module):
         self.avg_pool = nn.AvgPool2d(kernel_size=2, stride=2)
         self.max_pool = nn.MaxPool2d(kernel_size=2, stride=2)
 
-        if self.structure == "basic_cnn":
-            # CNN embedding model declaration
-            self.cnn_embedding_conv1 = nn.Conv2d(in_channels=4, out_channels=8, kernel_size=3, stride=1)
-            self.cnn_embedding_conv2 = nn.Conv2d(in_channels=8, out_channels=16, kernel_size=3, stride=1)
-            self.cnn_embedding_conv3 = nn.Conv2d(in_channels=16, out_channels=32, kernel_size=3, stride=1)
-            self.cnn_embedding_conv4 = nn.Conv2d(in_channels=32, out_channels=64, kernel_size=3, stride=1)
-
-            self.cnn_embedding_bn1 = nn.BatchNorm2d(8)
-            self.cnn_embedding_bn2 = nn.BatchNorm2d(16)
-            self.cnn_embedding_bn3 = nn.BatchNorm2d(32)
-            self.cnn_embedding_bn4 = nn.BatchNorm2d(64)
-
-            # lstm model declaration
-            # Note: the order is (seq, batch, feature) in pytorch
-            self.lstm = nn.LSTM(input_size=576, hidden_size=512, num_layers=2)
-
-            self.lstm_fc1 = nn.Linear(in_features=512, out_features=1024)
-
-            self.lstm_bn1 = nn.BatchNorm1d(1024)
-        elif self.structure == "pnet":
+        if self.structure == "pnet":
             # stn to support the pNet
             self.stn_conv1 = nn.Conv1d(4, 64, 1)
             self.stn_conv2 = nn.Conv1d(64, 128, 1)
@@ -60,13 +41,6 @@ class UAVModel(nn.Module):
             self.pNet_bn2 = nn.BatchNorm1d(128)
             self.pNet_bn3 = nn.BatchNorm1d(1024)
 
-            # lstm model declaration
-            # Note: the order is (seq, batch, feature) in pytorch
-            self.lstm = nn.LSTM(input_size=1024, hidden_size=512, num_layers=2)
-
-            self.lstm_fc1 = nn.Linear(in_features=512, out_features=1024)
-
-            self.lstm_bn1 = nn.BatchNorm1d(1024)
         elif self.structure == "rnet":
             # conv
             self.rnet_conv1 = torch.nn.Conv2d(in_channels=2, out_channels=32, kernel_size=5, padding=2)
@@ -108,17 +82,7 @@ class UAVModel(nn.Module):
         self.init_parameters()
 
     def init_parameters(self):
-        if self.structure == "basic_cnn":
-            # initialize the parameters within the CNN embedding model
-            torch.nn.init.normal_(self.cnn_embedding_conv1.weight, std=0.1)
-            torch.nn.init.constant_(self.cnn_embedding_conv1.bias, val=0.0)
-            torch.nn.init.normal_(self.cnn_embedding_conv2.weight, std=0.1)
-            torch.nn.init.constant_(self.cnn_embedding_conv2.bias, val=0.0)
-            torch.nn.init.normal_(self.cnn_embedding_conv3.weight, std=0.1)
-            torch.nn.init.constant_(self.cnn_embedding_conv3.bias, val=0.0)
-            torch.nn.init.normal_(self.cnn_embedding_conv4.weight, std=0.1)
-            torch.nn.init.constant_(self.cnn_embedding_conv4.bias, val=0.0)
-        elif self.structure == "pnet":
+        if self.structure == "pnet":
             # initialize the parameters within the STN model
             torch.nn.init.normal_(self.stn_conv1.weight, std=0.1)
             torch.nn.init.constant_(self.stn_conv1.bias, val=0.0)
@@ -160,19 +124,6 @@ class UAVModel(nn.Module):
             torch.nn.init.constant_(self.rnet_transpose1.bias, val=0.0)
             torch.nn.init.normal_(self.rnet_transpose2.weight, std=0.1)
             torch.nn.init.constant_(self.rnet_transpose2.bias, val=0.0)
-
-        if self.structure == 'basic_cnn' or self.structure == 'pnet':
-            # initialize the parameters within the lstm model
-            torch.nn.init.normal_(self.lstm.weight_hh_l0, std=0.1)
-            torch.nn.init.constant_(self.lstm.bias_hh_l0, val=0.0)
-            torch.nn.init.normal_(self.lstm.weight_ih_l0, std=0.1)
-            torch.nn.init.constant_(self.lstm.bias_ih_l0, val=0.0)
-            torch.nn.init.normal_(self.lstm.weight_hh_l1, std=0.1)
-            torch.nn.init.constant_(self.lstm.bias_hh_l1, val=0.0)
-            torch.nn.init.normal_(self.lstm.weight_ih_l1, std=0.1)
-            torch.nn.init.constant_(self.lstm.bias_ih_l1, val=0.0)
-            torch.nn.init.normal_(self.lstm_fc1.weight, std=0.1)
-            torch.nn.init.constant_(self.lstm_fc1.bias, val=0.0)
 
         # initialize the parameters within the sumNet model
         torch.nn.init.normal_(self.sum_conv1.weight, std=0.1)
@@ -300,21 +251,6 @@ class UAVModel(nn.Module):
         x = torch.flatten(x, 1)
         return x
 
-    # LSTM for the trajectory sequence prediction
-    def _lstm_froward(self, x):
-        x_out, x_hidden = self.lstm(x)
-
-        trajectory_list = list()
-        for time_sample in x_out:
-            time_sample = self.lstm_fc1(time_sample)
-            time_sample = self.lstm_bn1(time_sample)
-            time_sample = torch.sigmoid(time_sample)
-            trajectory_list.append(time_sample)
-        x = torch.stack(trajectory_list, dim=0)
-
-        x = x.view(x.shape[0], x.shape[1], 32, 32)
-        return x
-
     # Summarize the trajectory sequence to predict the final density
     def _sumNet_forward(self, x):
         # Extract features from the lstm outputs
@@ -344,27 +280,7 @@ class UAVModel(nn.Module):
         return  x
 
     def forward(self, x):
-        if self.structure == "basic_cnn":
-            # Note: the order is (seq, batch, feature) in pytorch
-            # (batch, seq, w, w, c) -> (seq, batch, c, w, w)
-            x = x.permute(1, 0, 4, 2, 3)
-
-            embedding_list = list()
-            for time_sample in x:
-                x_embedding = self._cnn_forward(time_sample)
-
-                embedding_list.append(x_embedding)
-            x_embedding = torch.stack(embedding_list, dim=0)
-
-            x_lstm = self._lstm_froward(x_embedding)
-
-            # (seq, batch, w, w) -> (batch, seq, w, w)
-            x_lstm = x_lstm.permute(1, 0, 2, 3)
-
-            # x_sum = self._sumNet_forward(x_lstm)
-            # x_sum = torch.squeeze(x_sum)
-            return x_lstm  # , x_sum
-        elif self.structure == "pnet":
+        if self.structure == "pnet":
             # (batch, seq, w, c) -> (seq, batch, c, w)
             x = x.permute(1, 0, 3, 2)
 
@@ -375,16 +291,10 @@ class UAVModel(nn.Module):
                 embedding_list.append(x_embedding)
             x_embedding = torch.stack(embedding_list, dim=0)
 
-            x_lstm = self._lstm_froward(x_embedding)
-
-            # (seq, batch, w, w) -> (batch, seq, w, w)
-            x_lstm = x_lstm.permute(1, 0, 2, 3)
-
-            # x_sum = self._sumNet_forward(x_lstm)
-            # x_sum = torch.squeeze(x_sum)
-            return x_lstm  # , x_sum
+            return x_embedding
         elif self.structure == "rnet":
             x = x.permute(0, 3, 1, 2)
 
             x = self._rNet_froward(x)
-            return x.squeeze()
+            x = x.squeeze()
+            return x
