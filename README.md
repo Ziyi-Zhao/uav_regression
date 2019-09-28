@@ -6,7 +6,7 @@ The code repository for the UAV density regression task
 /data/zzhao/uav_regression/rnet_pattern/training_data_trajectory.npy
 
 --structure\
-basic_cnn
+rnet
 
 --lr\
 0.001
