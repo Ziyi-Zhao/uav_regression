@@ -41,6 +41,16 @@ class UAVModel(nn.Module):
             self.pNet_bn2 = nn.BatchNorm1d(128)
             self.pNet_bn3 = nn.BatchNorm1d(1024)
 
+            # cnn model declaration
+            self.cnn_embedding_conv1 = nn.Conv2d(in_channels=1, out_channels=8, kernel_size=3, stride=1)
+            self.cnn_embedding_conv2 = nn.Conv2d(in_channels=8, out_channels=16, kernel_size=3, stride=1)
+            self.cnn_embedding_conv3 = nn.Conv2d(in_channels=16, out_channels=32, kernel_size=3, stride=1)
+            self.cnn_embedding_conv4 = nn.Conv2d(in_channels=32, out_channels=64, kernel_size=3, stride=1)
+
+            self.cnn_embedding_bn1 = nn.BatchNorm2d(8)
+            self.cnn_embedding_bn2 = nn.BatchNorm2d(16)
+            self.cnn_embedding_bn3 = nn.BatchNorm2d(32)
+            self.cnn_embedding_bn4 = nn.BatchNorm2d(64)
         elif self.structure == "rnet":
             # conv
             self.rnet_conv1 = torch.nn.Conv2d(in_channels=2, out_channels=32, kernel_size=5, padding=2)
@@ -63,19 +73,6 @@ class UAVModel(nn.Module):
             self.rnet_bn6 = nn.BatchNorm2d(16)
             self.rnet_bn7 = nn.BatchNorm2d(4)
             self.rnet_bn8 = nn.BatchNorm2d(1)
-
-        # sumNet model declaration
-        self.sum_conv1 = nn.Conv2d(in_channels=60, out_channels=32, kernel_size=3, stride=1)
-        self.sum_conv2 = nn.Conv2d(in_channels=32, out_channels=16, kernel_size=3, stride=1)
-        self.sum_transpose1 = nn.ConvTranspose2d(in_channels=4, out_channels=2, kernel_size=3, stride=1)
-        self.sum_transpose2 = nn.ConvTranspose2d(in_channels=2, out_channels=1, kernel_size=3, stride=1)
-
-        self.sum_fc1 = nn.Linear(in_features=576, out_features=3136)
-
-        self.sum_bn1 = nn.BatchNorm2d(32)
-        self.sum_bn2 = nn.BatchNorm2d(16)
-        self.sum_bn3 = nn.BatchNorm2d(2)
-        self.sum_bn4 = nn.BatchNorm2d(1)
 
         self.structure = structure
 
@@ -105,6 +102,16 @@ class UAVModel(nn.Module):
             torch.nn.init.constant_(self.pNet_conv2.bias, val=0.0)
             torch.nn.init.normal_(self.pNet_conv3.weight, std=0.1)
             torch.nn.init.constant_(self.pNet_conv3.bias, val=0.0)
+
+            # initialize the parameters within the cnn model
+            torch.nn.init.normal_(self.cnn_embedding_conv1.weight, std=0.1)
+            torch.nn.init.constant_(self.cnn_embedding_conv1.bias, val=0.0)
+            torch.nn.init.normal_(self.cnn_embedding_conv2.weight, std=0.1)
+            torch.nn.init.constant_(self.cnn_embedding_conv2.bias, val=0.0)
+            torch.nn.init.normal_(self.cnn_embedding_conv3.weight, std=0.1)
+            torch.nn.init.constant_(self.cnn_embedding_conv3.bias, val=0.0)
+            torch.nn.init.normal_(self.cnn_embedding_conv4.weight, std=0.1)
+            torch.nn.init.constant_(self.cnn_embedding_conv4.bias, val=0.0)
         elif self.structure == "rnet":
             # initialize the parameters within the rNet model
             torch.nn.init.normal_(self.rnet_conv1.weight, std=0.1)
@@ -125,24 +132,9 @@ class UAVModel(nn.Module):
             torch.nn.init.normal_(self.rnet_transpose2.weight, std=0.1)
             torch.nn.init.constant_(self.rnet_transpose2.bias, val=0.0)
 
-        # initialize the parameters within the sumNet model
-        torch.nn.init.normal_(self.sum_conv1.weight, std=0.1)
-        torch.nn.init.constant_(self.sum_conv1.bias, val=0.0)
-        torch.nn.init.normal_(self.sum_conv2.weight, std=0.1)
-        torch.nn.init.constant_(self.sum_conv2.bias, val=0.0)
-
-        torch.nn.init.normal_(self.sum_transpose1.weight, std=0.1)
-        torch.nn.init.constant_(self.sum_transpose1.bias, val=0.0)
-        torch.nn.init.normal_(self.sum_transpose2.weight, std=0.1)
-        torch.nn.init.constant_(self.sum_transpose2.bias, val=0.0)
-
-        torch.nn.init.normal_(self.sum_fc1.weight, std=0.1)
-        torch.nn.init.constant_(self.sum_fc1.bias, val=0.0)
-
     # PointNet for the feature extraction
     # Reference: https://arxiv.org/pdf/1612.00593.pdf
     def _pNet_forward(self, x):
-        # ToDo: handle the input data variance
         trans = self._stn_forward(x)
         x = x.transpose(2, 1)
         x = torch.bmm(x, trans)
@@ -234,7 +226,7 @@ class UAVModel(nn.Module):
         x = self.cnn_embedding_conv2(x)
         x = self.cnn_embedding_bn2(x)
         x = self.relu(x)
-        # x = self.max_pool(x)
+        x = self.max_pool(x)
 
         # Third cnn block
         x = self.cnn_embedding_conv3(x)
@@ -247,54 +239,23 @@ class UAVModel(nn.Module):
         x = self.cnn_embedding_bn4(x)
         x = self.relu(x)
 
-        # Flatten
-        x = torch.flatten(x, 1)
         return x
 
-    # Summarize the trajectory sequence to predict the final density
-    def _sumNet_forward(self, x):
-        # Extract features from the lstm outputs
-        x = self.sum_conv1(x)
-        x = self.sum_bn1(x)
-        x = self.relu(x)
-        x = self.max_pool(x)
-        x = self.sum_conv2(x)
-        x = self.sum_bn2(x)
-        x = self.relu(x)
-        x = self.max_pool(x)
-        x = torch.flatten(x, 1)
-        x = self.sum_fc1(x)
-        x = x.view(-1, 4, 28, 28)
-
-        # First 2d transpose block
-        x = self.sum_transpose1(x)
-        x = self.sum_bn3(x)
-        x = self.relu(x)
-
-        # Second 2d transpose block
-        x = self.sum_transpose2(x)
-        x = self.sum_bn4(x)
-
-        # Pixel-wise regression
-        x = torch.sigmoid(x)
-        return  x
-
-    def forward(self, x):
+    def forward(self, x_image = None, x_extra = None):
         if self.structure == "pnet":
-            # (batch, seq, w, c) -> (seq, batch, c, w)
-            x = x.permute(1, 0, 3, 2)
+            # ToDo: Add shortcut to connect the density feature and upsampling feature
+            x_extra = x_extra.float()
+            x_extra = self._cnn_forward(x_extra)
+            print(x_extra.shape)
 
-            embedding_list = list()
-            for time_sample in x:
-                x_embedding = self._pNet_forward(time_sample)
+            x_pnet = self._pNet_forward(x_image)
+            print(x_pnet.shape)
 
-                embedding_list.append(x_embedding)
-            x_embedding = torch.stack(embedding_list, dim=0)
-
-            return x_embedding
+            return x_pnet
         elif self.structure == "rnet":
-            x = x.permute(0, 3, 1, 2)
+            x = x_image.permute(0, 3, 1, 2)
 
             x = self._rNet_froward(x)
             x = x.squeeze()
+
             return x

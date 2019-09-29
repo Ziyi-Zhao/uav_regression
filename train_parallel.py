@@ -15,7 +15,7 @@ from utils import draw_roc_curve, calculate_precision_recall, visualize_sum_test
 os.environ["CUDA_VISIBLE_DEVICES"]="1"
 
 
-def train(model, train_loader, device, structure, optimizer, criterion, weight, epoch):
+def train(model, train_loader, device, structure, optimizer, criterion, epoch):
     model.train()
     sum_running_loss = 0.0
     loss = 0.0
@@ -30,7 +30,7 @@ def train(model, train_loader, device, structure, optimizer, criterion, weight, 
             density = data['density'].to(device)
             label_sum = data['label'].to(device)
             # model prediction
-            prediction = model(image)
+            prediction = model(x_image = image, x_extra = density)
             loss_mean_square_error = criterion(prediction, label_sum.data)
             # loss
             loss = loss_mean_square_error
@@ -51,7 +51,7 @@ def train(model, train_loader, device, structure, optimizer, criterion, weight, 
             image = data['data'].to(device)
             label_sum = data['label'].to(device)
             # model prediction
-            prediction = model(image)
+            prediction = model(x_image = image)
             loss_mean_square_error = criterion(prediction, label_sum.data)
             # final loss
             loss = loss_mean_square_error
@@ -68,7 +68,7 @@ def train(model, train_loader, device, structure, optimizer, criterion, weight, 
                 print('\nTraining phase: epoch: {} batch:{} Loss: {:.4f}\n'.format(epoch, batch_idx, sum_epoch_loss))
 
 
-def val(model, test_loader, device, structure, criterion, weight, epoch):
+def val(model, test_loader, device, structure, criterion, epoch):
     model.eval()
     sum_running_loss = 0.0
     num_images = 0
@@ -81,7 +81,7 @@ def val(model, test_loader, device, structure, criterion, weight, epoch):
                 density = data['density'].to(device)
                 label_sum = data['label'].to(device)
                 # model prediction
-                prediction = model(image)
+                prediction = model(x_image = image, x_extra = density)
                 loss_mean_square_error = criterion(prediction, label_sum.data)
 
                 # accumulate loss
@@ -94,7 +94,7 @@ def val(model, test_loader, device, structure, criterion, weight, epoch):
                 image = data['data'].to(device)
                 label_sum = data['label'].to(device)
                 # model prediction
-                prediction = model(image)
+                prediction = model(x_image = image)
 
                 loss_mean_square_error = criterion(prediction, label_sum.data)
 
@@ -180,7 +180,7 @@ def main():
     test_loader = torch.utils.data.DataLoader(test_dataset, batch_size=args.batch_size, shuffle=False, num_workers=30)
 
     if args.eval_only:
-        loss = val(model_ft, test_loader, device, args.structure, criterion, weight, 0)
+        loss = val(model_ft, test_loader, device, args.structure, criterion, 0)
         print('\nTesting phase: epoch: {} Loss: {:.4f}\n'.format(0, loss))
         return True
 
@@ -189,8 +189,8 @@ def main():
         print('Epoch {}/{}'.format(epoch, args.num_epochs - 1))
         print('-' * 80)
         exp_lr_scheduler.step()
-        train(model_ft, train_loader, device, args.structure, optimizer_ft, criterion, weight, epoch)
-        loss = val(model_ft, test_loader, device, args.structure, criterion, weight, epoch)
+        train(model_ft, train_loader, device, args.structure, optimizer_ft, criterion, epoch)
+        loss = val(model_ft, test_loader, device, args.structure, criterion, epoch)
         if loss < best_loss:
             save_model(checkpoint_dir=args.checkpoint_dir,
                        model_checkpoint_name=args.model_checkpoint_name + '_' + str(loss),
