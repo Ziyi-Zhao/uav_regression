@@ -146,8 +146,8 @@ def main():
     device = torch.device("cuda")
 
     all_dataset = UAVDatasetTuple(image_path=args.data_path, mode="train", structure=args.structure)
-    positive_ratio, negative_ratio = all_dataset.get_class_count()
-    weight = torch.FloatTensor((positive_ratio, negative_ratio))
+    # positive_ratio, negative_ratio = all_dataset.get_class_count()
+    # weight = torch.FloatTensor((positive_ratio, negative_ratio))
     train_size = int(args.split_ratio * len(all_dataset))
     test_size = len(all_dataset) - train_size
     train_dataset, test_dataset = torch.utils.data.random_split(all_dataset, [train_size, test_size])

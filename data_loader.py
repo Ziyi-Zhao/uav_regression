@@ -31,7 +31,7 @@ class UAVDatasetTuple(Dataset):
 
         for idx, _ in enumerate(image_collection):
             if self.structure == 'pnet':
-                self.image_md.append(image_collection[idx])
+                self.image_md.append(image_collection[idx].reshape(image_collection[idx].shape[0] * image_collection[idx].shape[1], image_collection[idx].shape[2]))
                 self.density_md.append(density_collection[idx])
                 self.label_md.append(label_collection[idx])
             elif self.structure == 'rnet':
