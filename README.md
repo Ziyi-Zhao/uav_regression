@@ -3,10 +3,10 @@ The code repository for the UAV density regression task
 
 # training parameters
 --data_path\
-/data/zzhao/uav_regression/rnet_pattern/training_data_trajectory.npy
+/data/zzhao/uav_regression/pnet_with_time/data_tasks.npy
 
 --structure\
-rnet
+pnet
 
 --lr\
 0.001

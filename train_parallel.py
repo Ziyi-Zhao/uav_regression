@@ -27,7 +27,8 @@ def train(model, train_loader, device, structure, optimizer, criterion, weight, 
 
         if structure == 'pnet':
             image = data['data'].to(device)
-            label_sum = data['label_sum'].to(device)
+            density = data['density'].to(device)
+            label_sum = data['label'].to(device)
             # model prediction
             prediction = model(image)
             loss_mean_square_error = criterion(prediction, label_sum.data)
@@ -48,7 +49,7 @@ def train(model, train_loader, device, structure, optimizer, criterion, weight, 
                 print('\nTraining phase: epoch: {} batch:{} Loss: {:.4f}\n'.format(epoch, batch_idx, sum_epoch_loss))
         elif structure == 'rnet':
             image = data['data'].to(device)
-            label_sum = data['label_sum'].to(device)
+            label_sum = data['label'].to(device)
             # model prediction
             prediction = model(image)
             loss_mean_square_error = criterion(prediction, label_sum.data)
@@ -77,7 +78,8 @@ def val(model, test_loader, device, structure, criterion, weight, epoch):
         for batch_idx, data in enumerate(tqdm(test_loader)):
             if structure == 'pnet':
                 image = data['data'].to(device)
-                label_sum = data['label_sum'].to(device)
+                density = data['density'].to(device)
+                label_sum = data['label'].to(device)
                 # model prediction
                 prediction = model(image)
                 loss_mean_square_error = criterion(prediction, label_sum.data)
@@ -90,7 +92,7 @@ def val(model, test_loader, device, structure, criterion, weight, epoch):
                 visualize_sum_testing_result(prediction, label_sum.data, batch_idx, epoch)
             elif structure == 'rnet':
                 image = data['data'].to(device)
-                label_sum = data['label_sum'].to(device)
+                label_sum = data['label'].to(device)
                 # model prediction
                 prediction = model(image)
 
