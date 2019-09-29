@@ -7,8 +7,8 @@ class UAVDatasetTuple(Dataset):
     def __init__(self, image_path, mode, structure):
         self.image_path = image_path
         if structure == 'pnet':
-            self.density_path = image_path.replace("tasks", "density")
-            self.label_path = image_path.replace("data", "label")
+            self.density_path = image_path.replace("_tasks", "_density")
+            self.label_path = self.density_path.replace("data_", "label_")
         elif structure == 'rnet':
             self.label_path = image_path.replace("_data_trajectory", "_label_density")
         self.mode = mode
