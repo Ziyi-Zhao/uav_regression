@@ -41,16 +41,34 @@ class UAVModel(nn.Module):
             self.pNet_bn2 = nn.BatchNorm1d(128)
             self.pNet_bn3 = nn.BatchNorm1d(1024)
 
+            # pNet feature extraction model declaration
+            self.pNet_feature_conv1 = nn.Conv2d(in_channels=1, out_channels=16, kernel_size=4, stride=1)
+            self.pNet_feature_conv2 = nn.Conv2d(in_channels=16, out_channels=32, kernel_size=3, stride=1)
+            self.pNet_feature_bn1 = nn.BatchNorm2d(16)
+            self.pNet_feature_bn2 = nn.BatchNorm2d(32)
+
             # cnn model declaration
-            self.cnn_embedding_conv1 = nn.Conv2d(in_channels=1, out_channels=8, kernel_size=3, stride=1)
+            self.cnn_embedding_conv1 = nn.Conv2d(in_channels=1, out_channels=8, kernel_size=3, stride=1, padding=1)
             self.cnn_embedding_conv2 = nn.Conv2d(in_channels=8, out_channels=16, kernel_size=3, stride=1)
-            self.cnn_embedding_conv3 = nn.Conv2d(in_channels=16, out_channels=32, kernel_size=3, stride=1)
-            self.cnn_embedding_conv4 = nn.Conv2d(in_channels=32, out_channels=64, kernel_size=3, stride=1)
+            self.cnn_embedding_conv3 = nn.Conv2d(in_channels=16, out_channels=32, kernel_size=3, stride=1, padding=1)
+            self.cnn_embedding_conv4 = nn.Conv2d(in_channels=32, out_channels=32, kernel_size=3, stride=1, padding=1)
 
             self.cnn_embedding_bn1 = nn.BatchNorm2d(8)
             self.cnn_embedding_bn2 = nn.BatchNorm2d(16)
             self.cnn_embedding_bn3 = nn.BatchNorm2d(32)
-            self.cnn_embedding_bn4 = nn.BatchNorm2d(64)
+            self.cnn_embedding_bn4 = nn.BatchNorm2d(32)
+
+            # deconv
+            self.cnn_transpose1 = nn.ConvTranspose2d(in_channels=64, out_channels=32, kernel_size=4, stride=2, padding=1)
+            self.cnn_transpose2 = nn.ConvTranspose2d(in_channels=64, out_channels=16, kernel_size=2, stride=2)
+            self.cnn_transpose3 = nn.ConvTranspose2d(in_channels=32, out_channels=4, kernel_size=5, stride=2, output_padding=1)
+
+            self.cnn_sum_conv = torch.nn.Conv2d(in_channels=4, out_channels=1, kernel_size=1)
+
+            self.cnn_transpose_bn1 = nn.BatchNorm2d(32)
+            self.cnn_transpose_bn2 = nn.BatchNorm2d(16)
+            self.cnn_transpose_bn3 = nn.BatchNorm2d(4)
+            self.cnn_sum_bn4 = nn.BatchNorm2d(1)
         elif self.structure == "rnet":
             # conv
             self.rnet_conv1 = torch.nn.Conv2d(in_channels=2, out_channels=32, kernel_size=5, padding=2)
@@ -103,6 +121,12 @@ class UAVModel(nn.Module):
             torch.nn.init.normal_(self.pNet_conv3.weight, std=0.1)
             torch.nn.init.constant_(self.pNet_conv3.bias, val=0.0)
 
+            # initialize the parameters within the PointNet feature extraction model
+            torch.nn.init.normal_(self.pNet_feature_conv1.weight, std=0.1)
+            torch.nn.init.constant_(self.pNet_feature_conv1.bias, val=0.0)
+            torch.nn.init.normal_(self.pNet_feature_conv2.weight, std=0.1)
+            torch.nn.init.constant_(self.pNet_feature_conv2.bias, val=0.0)
+
             # initialize the parameters within the cnn model
             torch.nn.init.normal_(self.cnn_embedding_conv1.weight, std=0.1)
             torch.nn.init.constant_(self.cnn_embedding_conv1.bias, val=0.0)
@@ -144,7 +168,18 @@ class UAVModel(nn.Module):
         x = self.relu(self.pNet_bn2(self.pNet_conv2(x)))
         x = self.pNet_bn3(self.pNet_conv3(x))
         x = torch.max(x, 2, keepdim=True)[0]
-        x = x.view(-1, 1024)
+
+        x = x.view(-1, 1, 32, 32)
+
+        x = self.pNet_feature_conv1(x)
+        x = self.pNet_feature_bn1(x)
+        x = self.relu(x)
+        x = self.max_pool(x)
+
+        x = self.pNet_feature_conv2(x)
+        x = self.pNet_feature_bn2(x)
+        x = self.relu(x)
+
         return x
 
     # STN to support the pNet
@@ -181,6 +216,7 @@ class UAVModel(nn.Module):
         x = self.rnet_bn1(x)
         x = self.relu(x)
         x = self.max_pool(x)
+
         x_shortcut = x
         # 32->64
         x = self.rnet_conv2(x)
@@ -219,46 +255,71 @@ class UAVModel(nn.Module):
         return x
 
     # Basic CNN model for the feature extraction
-    def _cnn_forward(self, x):
+    def _cnn_forward(self, x_extra, x_pnet):
         # First cnn block
-        x = self.cnn_embedding_conv1(x)
-        x = self.cnn_embedding_bn1(x)
-        x = self.relu(x)
-        x = self.max_pool(x)
+        x_extra_1 = self.cnn_embedding_conv1(x_extra)
+        x_extra_1 = self.cnn_embedding_bn1(x_extra_1)
+        x_extra_1 = self.relu(x_extra_1)
+        x_extra_1_pool = self.max_pool(x_extra_1)
 
         # Second cnn block
-        x = self.cnn_embedding_conv2(x)
-        x = self.cnn_embedding_bn2(x)
-        x = self.relu(x)
-        x = self.max_pool(x)
+        x_extra_2 = self.cnn_embedding_conv2(x_extra_1_pool)
+        x_extra_2 = self.cnn_embedding_bn2(x_extra_2)
+        x_extra_2 = self.relu(x_extra_2)
+        x_extra_2_pool = self.max_pool(x_extra_2)
 
         # Third cnn block
-        x = self.cnn_embedding_conv3(x)
-        x = self.cnn_embedding_bn3(x)
-        x = self.relu(x)
-        x = self.max_pool(x)
+        x_extra_3 = self.cnn_embedding_conv3(x_extra_2_pool)
+        x_extra_3 = self.cnn_embedding_bn3(x_extra_3)
+        x_extra_3 = self.relu(x_extra_3)
+        x_extra_3_pool = self.max_pool(x_extra_3)
 
         # Fourth cnn block
-        x = self.cnn_embedding_conv4(x)
-        x = self.cnn_embedding_bn4(x)
-        x = self.relu(x)
+        x_extra_4 = self.cnn_embedding_conv4(x_extra_3_pool)
+        x_extra_4 = self.cnn_embedding_bn4(x_extra_4)
+        x_extra_4 = self.relu(x_extra_4)
 
+        # Combine the feature extracted from the task list and previous density
+        x_combine = torch.cat([x_pnet, x_extra_4], dim=1)
+
+        # First deconv block
+        x_combine_1 = self.cnn_transpose1(x_combine)
+        x_combine_1 = self.cnn_transpose_bn1(x_combine_1)
+        x_combine_1 = self.relu(x_combine_1)
+
+        # Combine the feature extracted from the task list and previous density
+        x_combine_1 = torch.cat([x_combine_1, x_extra_3], dim=1)
+
+        # Second deconv block
+        x_combine_2 = self.cnn_transpose2(x_combine_1)
+        x_combine_2 = self.cnn_transpose_bn2(x_combine_2)
+        x_combine_2 = self.relu(x_combine_2)
+
+        # Combine the feature extracted from the task list and previous density
+        x_combine_2 = torch.cat([x_combine_2, x_extra_2], dim=1)
+
+        # Third deconv block
+        x_combine_3 = self.cnn_transpose3(x_combine_2)
+        x_combine_3 = self.cnn_transpose_bn3(x_combine_3)
+        x_combine_3 = self.relu(x_combine_3)
+
+        x = self.cnn_sum_conv(x_combine_3)
+        x = self.cnn_sum_bn4(x)
+        x = self.relu(x)
         return x
 
     def forward(self, x_image = None, x_extra = None):
         if self.structure == "pnet":
-            # ToDo: Combine two features. Add shortcut to connect the density feature and upsampling feature.
+            # ToDo: Add shortcut to connect the density feature and upsampling feature.
             x_extra = x_extra.float()
-            x_cnn = self._cnn_forward(x_extra)
-            print(x_cnn.shape)
-
             x_image = x_image.float()
             x_image = x_image.permute(0, 2, 1)
-            x_pnet = self._pNet_forward(x_image)
-            x_pnet = x_pnet.view(-1, 1, 32, 32)
-            print(x_pnet.shape)
 
-            return x_pnet
+            x_pnet = self._pNet_forward(x_image)
+            x_cnn = self._cnn_forward(x_extra, x_pnet)
+
+            x = x_cnn.squeeze()
+            return x
         elif self.structure == "rnet":
             x = x_image.permute(0, 3, 1, 2)
 

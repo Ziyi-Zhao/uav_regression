@@ -12,7 +12,7 @@ from data_loader import UAVDatasetTuple
 from utils import draw_roc_curve, calculate_precision_recall, visualize_sum_testing_result, visualize_lstm_testing_result
 
 
-os.environ["CUDA_VISIBLE_DEVICES"]="1"
+os.environ["CUDA_VISIBLE_DEVICES"]="3"
 
 
 def train(model, train_loader, device, structure, optimizer, criterion, epoch):
@@ -28,7 +28,7 @@ def train(model, train_loader, device, structure, optimizer, criterion, epoch):
         if structure == 'pnet':
             image = data['data'].to(device)
             density = data['density'].to(device)
-            label_sum = data['label'].to(device)
+            label_sum = data['label'].to(device).float()
             # model prediction
             prediction = model(x_image = image, x_extra = density)
             loss_mean_square_error = criterion(prediction, label_sum.data)
@@ -79,7 +79,7 @@ def val(model, test_loader, device, structure, criterion, epoch):
             if structure == 'pnet':
                 image = data['data'].to(device)
                 density = data['density'].to(device)
-                label_sum = data['label'].to(device)
+                label_sum = data['label'].to(device).float()
                 # model prediction
                 prediction = model(x_image = image, x_extra = density)
                 loss_mean_square_error = criterion(prediction, label_sum.data)
