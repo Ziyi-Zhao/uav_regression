@@ -255,6 +255,7 @@ class UAVModel(nn.Module):
             x_image = x_image.float()
             x_image = x_image.permute(0, 2, 1)
             x_pnet = self._pNet_forward(x_image)
+            x_pnet = x_pnet.view(-1, 1, 32, 32)
             print(x_pnet.shape)
 
             return x_pnet
