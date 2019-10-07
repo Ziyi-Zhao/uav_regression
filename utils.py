@@ -3,8 +3,6 @@ import torch
 import pickle
 import numpy as np
 import torchvision
-import matplotlib
-matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 
 from inspect import signature
@@ -47,7 +45,7 @@ def calculate_precision_recall(prediction, label, mode, batch_idx, epoch):
     plt.ylim([0.0, 1.05])
     plt.xlim([0.0, 1.0])
     plt.title('2-class Precision-Recall curve: AP={0:0.2f}'.format(average_precision))
-    plt.savefig('/home/wbai03/data/uav_regression/regression_process/precision_recall_curve/' + str(mode) + '/precision_recall_curve_epoch_' + str(epoch) + 'batch_' + str (batch_idx) + '.png')
+    plt.savefig('/home/zzhao/data/uav_regression/regression_process/precision_recall_curve/' + str(mode) + '/precision_recall_curve_epoch_' + str(epoch) + 'batch_' + str (batch_idx) + '.png')
     plt.close()
 
     return precision[idx], recall[idx]
@@ -71,33 +69,32 @@ def draw_roc_curve(prediction, label, mode, epoch, batch_idx):
     plt.ylabel('True Positive Rate')
     plt.title('Receiver operating characteristic example')
     plt.legend(loc="lower right")
-    plt.savefig('/home/wbai03/data/uav_regression/regression_process/roc_curve/' + str(mode) + '/roc_curve_epoch_' + str(epoch) + '_batch_' + str (batch_idx) + '.png')
+    plt.savefig('/home/zzhao/data/uav_regression/regression_process/roc_curve/' + str(mode) + '/roc_curve_epoch_' + str(epoch) + '_batch_' + str (batch_idx) + '.png')
     plt.close()
 
     return auroc
 
 def visualize_lstm_testing_result(prediction, label, batch_id, epoch):
     assert prediction.shape[0] == label.shape[0], "prediction size and label size is not identical"
-    if not os.path.exists("/home/wbai03/data/uav_regression/testing_result/epoch_" + str(epoch)):
-        os.mkdir("/home/wbai03/data/uav_regression/testing_result/epoch_" + str(epoch))
-    if not os.path.exists("/home/wbai03/data/uav_regression/testing_result/epoch_" + str(epoch) + "/lstm"):
-        os.mkdir("/home/wbai03/data/uav_regression/testing_result/epoch_" + str(epoch) + "/lstm")
+    if not os.path.exists("/home/zzhao/data/uav_regression/testing_result/epoch_" + str(epoch)):
+        os.mkdir("/home/zzhao/data/uav_regression/testing_result/epoch_" + str(epoch))
+    if not os.path.exists("/home/zzhao/data/uav_regression/testing_result/epoch_" + str(epoch) + "/lstm"):
+        os.mkdir("/home/zzhao/data/uav_regression/testing_result/epoch_" + str(epoch) + "/lstm")
     for idx, _ in enumerate(prediction):
         prediction_lstm = torch.sum(prediction[idx], dim=0)
         label_lstm = torch.sum(label[idx], dim=0)
         prediction_lstm = (prediction_lstm - torch.min(prediction_lstm)) / (torch.max(prediction_lstm) - torch.min(prediction_lstm))
-        label_lstm = (label_lstm - torch.min(label_lstm)) / (torch.max(label_lstm) - torch.min(label_lstm))
-        torchvision.utils.save_image(prediction_lstm, "/home/wbai03/data/uav_regression/testing_result/epoch_" + str(epoch) + "/lstm/" + str(idx + batch_id * 32) +  "_prediction.png")
-        torchvision.utils.save_image(label_lstm, "/home/wbai03/data/uav_regression/testing_result/epoch_" + str(epoch) + "/lstm/" + str(idx + batch_id * 32) + "_label.png")
+        torchvision.utils.save_image(prediction_lstm, "/home/zzhao/data/uav_regression/testing_result/epoch_" + str(epoch) + "/lstm/" + str(idx + batch_id * 32) +  "_prediction.png")
+        torchvision.utils.save_image(label_lstm, "/home/zzhao/data/uav_regression/testing_result/epoch_" + str(epoch) + "/lstm/" + str(idx + batch_id * 32) + "_label.png")
 
 
 def visualize_sum_testing_result(prediction, label, batch_id, epoch):
     assert prediction.shape[0] == label.shape[0], "prediction size and label size is not identical"
-    if not os.path.exists("/home/wbai03/data/uav_regression/testing_result/epoch_" + str(epoch)):
-        os.mkdir("/home/wbai03/data/uav_regression/testing_result/epoch_" + str(epoch))
-    if not os.path.exists("/home/wbai03/data/uav_regression/testing_result/epoch_" + str(epoch) + "/sum"):
-        os.mkdir("/home/wbai03/data/uav_regression/testing_result/epoch_" + str(epoch) + "/sum")
+    if not os.path.exists("/home/zzhao/data/uav_regression/testing_result/epoch_" + str(epoch)):
+        os.mkdir("/home/zzhao/data/uav_regression/testing_result/epoch_" + str(epoch))
+    if not os.path.exists("/home/zzhao/data/uav_regression/testing_result/epoch_" + str(epoch) + "/sum"):
+        os.mkdir("/home/zzhao/data/uav_regression/testing_result/epoch_" + str(epoch) + "/sum")
     for idx, _ in enumerate(prediction):
-        torchvision.utils.save_image(prediction[idx], "/home/wbai03/data/uav_regression/testing_result/epoch_" + str(epoch) + "/sum" + "/" + str(idx + batch_id * 32) +  "_prediction.png")
-        torchvision.utils.save_image(label[idx], "/home/wbai03/data/uav_regression/testing_result/epoch_" + str(epoch) + "/sum" + "/" + str(idx + batch_id * 32) + "_label.png")
+        torchvision.utils.save_image(prediction[idx], "/home/zzhao/data/uav_regression/testing_result/epoch_" + str(epoch) + "/sum" + "/" + str(idx + batch_id * 32) +  "_prediction.png")
+        torchvision.utils.save_image(label[idx], "/home/zzhao/data/uav_regression/testing_result/epoch_" + str(epoch) + "/sum" + "/" + str(idx + batch_id * 32) + "_label.png")
 

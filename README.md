@@ -3,10 +3,10 @@ The code repository for the UAV density regression task
 
 # training parameters
 --data_path\
-/home/wbai03/UAV_POSTPROCESS/data/training_data_trajectory.npy
+/home/zzhao/UAV_POSTPROCESS/data/training_data_trajectory.npy
 
 --structure\
-pnet
+basic_cnn
 
 --lr\
 0.001
@@ -27,7 +27,7 @@ pnet
 0.9
 
 --checkpoint_dir\
-/home/wbai03/uav_regression/check_point
+/home/zzhao/data/uav_regression/check_point
 
 --model_checkpoint_name\
 uav_regression
