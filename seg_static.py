@@ -52,10 +52,8 @@ class seg_static(nn.Module):
 
 
         # subnet parameters initialization
-        self.convs = nn.ModuleList([Unit(10), Unit(10), Unit(10),
-                                    Unit(5), Unit(5), Unit(5), Unit(5),
-                                    Unit(2), Unit(2), Unit(2), Unit(2), Unit(2)])
-        self.affines = nn.ModuleList([iLayer([self.out3,23,23]) for i in range(12)])
+        self.convs = nn.ModuleList([Unit(10) for i in range(6)])
+        self.affines = nn.ModuleList([iLayer([self.out3,23,23]) for i in range(6)])
 
         # cat batchnormalization
         self.cat_bn = nn.BatchNorm2d(self.out4)
@@ -89,18 +87,9 @@ class seg_static(nn.Module):
 
         # print("subx shape", sub_x.shape)
 
-        for i in range(0, 12, 1):
+        for i in range(0, 6, 1):
 
-            subx = []
-            if i < 3:
-                step = 10
-                subx = sub_x[:, i * step : i * step + step, :, :]
-            elif i >= 3 and i < 7:
-                step = 5
-                subx = sub_x[:, 30 + (i - 3) * step : 30 + (i - 3) * step + step, :, :]
-            elif i >= 7 and i < 12:
-                step = 2
-                subx = sub_x[:, 50 + (i - 7) * step : 50 + (i - 7) * step + step, :, :]
+            subx = sub_x[:, i * 10: i * 10 + 10, :, :]
 
             # 3D Conv Operation
             # sub_x = subx.permute(0,1,3,4,2)

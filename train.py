@@ -18,7 +18,7 @@ from correlation import Correlation
 image_saving_dir = '/home/zzhao/data/uav_regression/'
 
 
-os.environ["CUDA_VISIBLE_DEVICES"]="2"
+os.environ["CUDA_VISIBLE_DEVICES"]="3"
 
 init_cor = Correlation()
 pred_cor = Correlation()
@@ -155,9 +155,11 @@ def main():
     print("Total image tuples for test: ", len(test_dataset))
 
     print("\nLet's use", torch.cuda.device_count(), "GPUs!\n")
+
     model_ft = seg_dynamic()
     # model_ft = seg_static()
     # model_ft = MainNet()
+
     model_ft = nn.DataParallel(model_ft)
 
     criterion  = nn.MSELoss(reduction='sum')
