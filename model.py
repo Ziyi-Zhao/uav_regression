@@ -3,9 +3,9 @@ import torch.nn as nn
 
 
 
-class MainNet(nn.Module):
+class mainnet(nn.Module):
     def __init__(self):
-        super(MainNet, self).__init__()
+        super(mainnet, self).__init__()
 
         self.out1 = 64
         self.out2 = 128
@@ -151,7 +151,7 @@ if __name__ == "__main__":
     subx = torch.rand(2,1, 100, 100,60)
     mainx =  torch.rand(2,1,100, 100)
 
-    net = MainNet()
+    net = mainnet()
     output = net(subx, mainx)
     print(output.shape)
 #[2, 256, 23, 23]

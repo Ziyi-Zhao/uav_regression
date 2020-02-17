@@ -7,7 +7,7 @@ import torch.optim as optim
 
 from tqdm import tqdm
 from torch.optim import lr_scheduler
-from model import MainNet
+from model import mainnet
 from seg_dynamic import seg_dynamic
 from seg_static import seg_static
 from dataloader import UAVDatasetTuple
@@ -157,8 +157,8 @@ def main():
     print("\nLet's use", torch.cuda.device_count(), "GPUs!\n")
 
     # model_ft = seg_dynamic()
-    model_ft = seg_static()
-    # model_ft = MainNet()
+    # model_ft = seg_static()
+    model_ft = mainnet()
 
     model_ft = nn.DataParallel(model_ft)
 
