@@ -59,13 +59,13 @@ def auc(types, percentages, data, auc_path):
         for i, t in zip(range(len(types)), types):
             roc_auc = np.trapz(fprs[i], tprs[i])
             plt.plot(fprs[i], tprs[i], color=palette(i + 1), label="{0} auc: {1}".format(t, round(1 + roc_auc, 3)))
-            print("{0} auc: {1}".format(t, 1 + roc_auc))
+            print("auc: {0}".format(1 + roc_auc))
         print()
         plt.xlabel("False Positive Rate")
         plt.ylabel("True Positive Rate")
-        plt.title("ROC AUC")
+        plt.title("AUROC")
         plt.legend()
-        plt.savefig(auc_path + "/roc_auc_p_{0}.png".format(1 - 1 / p))
+        plt.savefig(auc_path + "/auroc_p_{0}.png".format(1 - 1 / p))
 
 
 if __name__ == "__main__":
