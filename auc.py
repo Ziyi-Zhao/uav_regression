@@ -42,20 +42,14 @@ def rates(label, prediction, percentage):
     return tpr, fpr
 
 
-def auc(types, percentages, data):
-    # types = ['flow', 'ones', 'probability']
-    # types = ['flow']
-    # percentages = [0.5, 0.75, 0.9]
-    # percentages = [2, 4, 10]
-    # percentages = [100]
-    tprs = []
-    fprs = []
+def auc(types, percentages, data, auc_path):
+
     for p in percentages:
         tprs = []
         fprs = []
         for label_path, pred_path in data:
-            label = np.load(label_path)
-            prediction = np.load(pred_path)
+            label = label_path
+            prediction = pred_path
             tpr, fpr = rates(label.reshape(-1), prediction.reshape(-1), p)
             tprs.append(tpr)
             fprs.append(fpr)
@@ -71,16 +65,7 @@ def auc(types, percentages, data):
         plt.ylabel("True Positive Rate")
         plt.title("ROC AUC")
         plt.legend()
-        plt.savefig("img/roc_auc percentage={0}.png".format(1 - 1 / p))
-
-        plt.figure(figsize=(5, 5))
-        for i, t in zip(range(len(types)), types):
-            plt.plot(thresholds, tprs[i], label=t)
-        plt.xlabel("Thresholds")
-        plt.ylabel("True Positive Rate")
-        plt.title("Recall")
-        plt.legend()
-        plt.savefig("img/recall percentage={0}.png".format(1 - 1 / p))
+        plt.savefig(auc_path + "/roc_auc_p_{0}.png".format(1 - 1 / p))
 
 
 if __name__ == "__main__":

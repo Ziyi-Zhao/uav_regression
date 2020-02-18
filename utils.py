@@ -1,11 +1,8 @@
 import os
 import torch
 import pickle
-import numpy as np
 import torchvision
-import matplotlib.pyplot as plt
 
-from inspect import signature
 from sklearn.metrics import roc_curve, roc_auc_score, precision_recall_curve, average_precision_score
 
 

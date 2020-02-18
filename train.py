@@ -11,8 +11,9 @@ from model import mainnet
 from seg_dynamic import seg_dynamic
 from seg_static import seg_static
 from dataloader import UAVDatasetTuple
-from utils import visualize_sum_testing_result, visualize_sum_training_result
+from utils import visualize_sum_testing_result
 from correlation import Correlation
+from auc import auc
 
 
 image_saving_dir = '/home/zzhao/data/uav_regression/'
@@ -51,8 +52,6 @@ def train(model, train_loader, device, optimizer, criterion, epoch, batch_size):
         #loss
         loss_mse = criterion(prediction, label.data)
 
-        # visualize_sum_training_result(init, prediction, sub_prediction, label.data, batch_idx, epoch, batch_size)
-
         # update the weights within the model
         loss_mse.backward()
         optimizer.step()
@@ -64,7 +63,6 @@ def train(model, train_loader, device, optimizer, criterion, epoch, batch_size):
 
         if batch_idx % 50 == 0 or batch_idx == len(train_loader) - 1:
             sum_epoch_loss = sum_running_loss / num_images
-            #visualize_sum_training_result(init, prediction, sub_prediction, label.data, batch_idx, epoch, batch_size)
             print('\nTraining phase: epoch: {} batch:{} Loss: {:.4f}\n'.format(epoch, batch_idx, sum_epoch_loss))
 
 def val(path, model, test_loader, device, criterion, epoch, batch_size):
@@ -96,7 +94,7 @@ def val(path, model, test_loader, device, criterion, epoch, batch_size):
             sum_running_loss += loss_mse.item() * init.size(0)
 
             # visualize the sum testing result
-            visualize_sum_testing_result(path,init, prediction, task_label, label.data, batch_idx, epoch, batch_size)
+            visualize_sum_testing_result(path, init, prediction, task_label, label.data, batch_idx, epoch, batch_size)
             if batch_idx == 0:
                 prediction_output = prediction.cpu().detach().numpy()
                 label_output = label.cpu().detach().numpy()
@@ -107,7 +105,8 @@ def val(path, model, test_loader, device, criterion, epoch, batch_size):
                 init_output = np.append(init.cpu().detach().numpy(), init_output, axis=0)
     sum_running_loss = sum_running_loss / len(test_loader.dataset)
     print('\nTesting phase: epoch: {} Loss: {:.4f}\n'.format(epoch, sum_running_loss))
-
+    auc_path = os.path.join(path, "epoch_" + str(epoch))
+    auc(['flow'], [2, 4, 10, 100], [[label_output, prediction_output]], auc_path)
     return sum_running_loss, prediction_output, label_output, init_output
 
 def save_model(checkpoint_dir,  model_checkpoint_name, model):
@@ -209,9 +208,9 @@ def main():
                        model=model_ft)
             best_loss = loss
         coef = pred_cor.corrcoef(prediction_output, label_output, cor_path, "correlation_{0}.png".format(epoch))
-        correlation_init_label = init_cor.corrcoef(init_output,label_output, cor_path,"correlation_init_label{0}.png".format(epoch))
-        print('correlation coefficient : {0}\n'.format(coef))
-        print('correlation_init_label coefficient : {0}\n'.format(correlation_init_label))
+        correlation_init_label = init_cor.corrcoef(init_output,label_output, cor_path,"correlation_init_label_{0}.png".format(epoch))
+        print('prediction-label correlation coefficient : {0}\n'.format(coef))
+        print('initial-label correlation coefficient : {0}\n'.format(correlation_init_label))
 
 if __name__ == '__main__':
     main()
