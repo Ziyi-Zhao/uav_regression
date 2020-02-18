@@ -58,7 +58,7 @@ def auc(types, percentages, data, auc_path):
         palette = plt.get_cmap('Set1')
         for i, t in zip(range(len(types)), types):
             roc_auc = np.trapz(fprs[i], tprs[i])
-            plt.plot(fprs[i], tprs[i], color=palette(i + 1), label="{0} auc: {1}".format(t, round(1 + roc_auc, 3)))
+            plt.plot(fprs[i], tprs[i], color=palette(i + 1), label="auc: {0}".format(round(1 + roc_auc, 3)))
             print("auc: {0}".format(1 + roc_auc))
         print()
         plt.xlabel("False Positive Rate")
