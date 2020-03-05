@@ -35,7 +35,7 @@ def visualize_sum_testing_result(path,init, prediction,sub_prediction, label, ba
 
         # print("sub_prediction.shape ", sub_prediction.shape)
         #4, 1, 60, 100, 100
-        sub_prediction_output = sub_prediction[idx][40].cpu().detach()
+        sub_prediction_output = sub_prediction[idx][30].cpu().detach()
         sub_prediction_output = torch.squeeze(sub_prediction_output)
         label_output = label[idx].cpu().detach()
         label_output = torch.squeeze(label_output)

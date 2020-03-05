@@ -19,7 +19,7 @@ from auc import auc
 image_saving_dir = '/home/zzhao/data/uav_regression/'
 
 
-os.environ["CUDA_VISIBLE_DEVICES"]="1"
+os.environ["CUDA_VISIBLE_DEVICES"]="3"
 
 init_cor = Correlation()
 pred_cor = Correlation()
@@ -105,9 +105,12 @@ def val(path, model, test_loader, device, criterion, epoch, batch_size):
                 init_output = np.append(init.cpu().detach().numpy(), init_output, axis=0)
     sum_running_loss = sum_running_loss / len(test_loader.dataset)
     print('\nTesting phase: epoch: {} Loss: {:.4f}\n'.format(epoch, sum_running_loss))
-    auc_path = os.path.join(path, "epoch_" + str(epoch))
-    auc(['flow'], [2, 4, 10, 100], [[label_output, prediction_output]], auc_path)
+    # auc_path = os.path.join(path, "epoch_" + str(epoch))
+    # auc(['flow'], [2, 4, 10, 100], [[label_output, prediction_output]], auc_path)
     return sum_running_loss, prediction_output, label_output, init_output
+
+def val_continuous(path, model, test_loader, device, criterion, epoch, batch_size):
+    pass
 
 def save_model(checkpoint_dir,  model_checkpoint_name, model):
     model_save_path = '{}/{}'.format(checkpoint_dir, model_checkpoint_name)
@@ -155,8 +158,8 @@ def main():
 
     print("\nLet's use", torch.cuda.device_count(), "GPUs!\n")
 
-    # model_ft = seg_dynamic()
-    model_ft = seg_static()
+    model_ft = seg_dynamic()
+    # model_ft = seg_static()
     # model_ft = mainnet()
 
     model_ft = nn.DataParallel(model_ft)
