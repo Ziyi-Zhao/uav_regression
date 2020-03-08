@@ -32,7 +32,7 @@ class UAVDatasetTuple(Dataset):
             init = self._prepare_init(idx)
             label = self._get_label(idx)
 
-            init = np.expand_dims(init, axis=0)
+            # init = np.expand_dims(init, axis=0)
         except Exception as e:
             print('error encountered while loading {}'.format(idx))
             print("Unexpected error:", sys.exc_info()[0])
@@ -53,27 +53,25 @@ class UAVDatasetTuple(Dataset):
     def _prepare_task(self, idx):
         #task_coordinate = self.task_md[idx]
         input = self.task_md[idx]
-        #print("input shape", input.shape)
-        task_md = torch.zeros([input.shape[0],15, 100, 100])
-        for i in range(input.shape[0]):
-            # if i < 30:
-            #     continue
-            for j in range(15):
-                x1 = int(input[i][j][0])
-                y1 = int(input[i][j][1])
-                x2 = int(input[i][j][2])
-                y2 = int(input[i][j][3])
-                if x1 == 0 and y1 == 0 and x2 == 0 and y2 == 0:
-                    continue
-                else:
-                    task_md[i][j][x1][y1] = 1.00
-                    task_md[i][j][x2][y2] = 1.00
-            # if i > 30:
-            #     return task_md.reshape(input.shape[0],15,10000)
-        return task_md.reshape(input.shape[0],15,10000)
+        # for i in range(input.shape[0]):
+        #     # if i < 30:
+        #     #     continue
+        #     for j in range(15):
+        #         x1 = int(input[i][j][0])
+        #         y1 = int(input[i][j][1])
+        #         x2 = int(input[i][j][2])
+        #         y2 = int(input[i][j][3])
+        #         if x1 == 0 and y1 == 0 and x2 == 0 and y2 == 0:
+        #             continue
+        #         else:
+        #             task_md[i][j][x1][y1] = 1.00
+        #             task_md[i][j][x2][y2] = 1.00
+        #     # if i > 30:
+        #     #     return task_md.reshape(input.shape[0],15,10000)
+        return input
 
     def _get_label(self, idx):
-        label_md = self.label_md[idx].reshape(100,100)
+        label_md = self.label_md[idx]
         return label_md
 
     def get_class_count(self):

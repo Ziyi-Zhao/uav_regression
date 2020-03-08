@@ -156,6 +156,8 @@ def val_continuous(path, model, test_loader, device, criterion, epoch, batch_siz
                     label_output = np.append(label.cpu().detach().numpy(), label_output, axis=0)
                     init_output = np.append(init.cpu().detach().numpy(), init_output, axis=0)
 
+                batch_idx += 1
+
 
     sum_running_loss = sum_running_loss / len(test_loader.dataset)
     print('\nTesting phase: epoch: {} Loss: {:.4f}\n'.format(epoch, sum_running_loss))
@@ -239,7 +241,7 @@ def main():
     if args.eval_only:
         print("eval only")
         for epoch in range(1):
-            loss, prediction_output, label_output, init_output = val(image_saving_path, model_ft, test_loader,
+            loss, prediction_output, label_output, init_output = val_continuous(image_saving_path, model_ft, test_loader,
                                                                      device, criterion, epoch, args.batch_size)
             cor_path = os.path.join(correlation_path, "epoch_" + str(epoch))
             coef = pred_cor.corrcoef(prediction_output, label_output, cor_path, "correlation_{0}.png".format(epoch))
