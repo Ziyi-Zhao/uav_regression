@@ -23,6 +23,9 @@ os.environ["CUDA_VISIBLE_DEVICES"]="3"
 
 init_cor = Correlation()
 pred_cor = Correlation()
+init_seg_cor = Correlation()
+pred_seg_cor = Correlation()
+
 
 def train(model, train_loader, device, optimizer, criterion, epoch, batch_size):
     model.train()
@@ -71,7 +74,7 @@ def val(path, model, test_loader, device, criterion, epoch, batch_size):
 
     with torch.no_grad():
         for batch_idx, data in enumerate(tqdm(test_loader)):
-            task = data['task'].to(device).float()
+
             task_label = data['task_label'].to(device).float()
 
             # All black
@@ -106,32 +109,47 @@ def val(path, model, test_loader, device, criterion, epoch, batch_size):
                 init_output = np.append(init.cpu().detach().numpy(), init_output, axis=0)
     sum_running_loss = sum_running_loss / len(test_loader.dataset)
     print('\nTesting phase: epoch: {} Loss: {:.4f}\n'.format(epoch, sum_running_loss))
+
+    # save auroc result
     # auc_path = os.path.join(path, "epoch_" + str(epoch))
     # auc(['flow'], [2, 4, 10, 100], [[label_output, prediction_output]], auc_path)
+
+    # save correlation result
+    correlation_path = path
+    cor_path = os.path.join(correlation_path, "epoch_" + str(epoch))
+    coef = pred_cor.corrcoef(prediction_output, label_output, cor_path, "correlation_{0}.png".format(epoch))
+    correlation_init_label = init_cor.corrcoef(init_output, label_output, cor_path,
+                                               "correlation_init_label_{0}.png".format(epoch))
+    print('correlation coefficient : {0}\n'.format(coef))
+    print('correlation_init_label coefficient : {0}\n'.format(correlation_init_label))
+
     return sum_running_loss, prediction_output, label_output, init_output
 
 def val_continuous(path, model, test_loader, device, criterion, epoch, batch_size):
     model.eval()
     sum_running_loss = 0.0
+    prediction_output_segment = []
+    label_output_segment = []
+    init_output_segment = []
 
     with torch.no_grad():
         for batch_idx, data in enumerate(tqdm(test_loader)):
 
-            task = data['task'].to(device).float()
             task_label = data['task_label'].to(device).float()
 
             # All black
-            # init = data['init']
-            # init[:] = 0
-            # init = init.to(device).float()
+            init = data['init']
+            init[:] = 0
+            init = init.to(device).float()
 
             # Normal
-            init = data['init'].to(device).float()
+            # init = data['init'].to(device).float()
 
             # print("init shape", init.shape)
             label = data['label'].to(device).float()
 
             prediction = np.zeros(label[:, 1, :, :].shape)
+
             for i in range(label.shape[1]):
 
                 # model prediction
@@ -155,19 +173,53 @@ def val_continuous(path, model, test_loader, device, criterion, epoch, batch_siz
                 # visualize the sum testing result
                 visualize_sum_testing_result_cont(path, init_input, prediction, task_label[:, i, :, :, :], label[:, i, :, :].data,
                                              batch_idx, epoch, batch_size, i)
+
+                prediction_temp = prediction.cpu().detach().numpy()
+                label_temp = label[:, i, :, :].cpu().detach().numpy()
+                init_temp = init[:, i, :, :].cpu().detach().numpy()
+
+                # save all prediction, label, init results
                 if batch_idx == 0 and i == 0:
-                    prediction_output = prediction.cpu().detach().numpy()
-                    label_output = label[:, i, :, :].cpu().detach().numpy()
-                    init_output = init[:, i, :, :].cpu().detach().numpy()
+                    prediction_output = prediction_temp
+                    label_output = label_temp
+                    init_output = init_temp
                 else:
-                    prediction_output = np.append(prediction.cpu().detach().numpy(), prediction_output, axis=0)
-                    label_output = np.append(label[:, i, :, :].cpu().detach().numpy(), label_output, axis=0)
-                    init_output = np.append(init[:, i, :, :].cpu().detach().numpy(), init_output, axis=0)
+                    prediction_output = np.append(prediction_output, prediction_temp, axis=0)
+                    label_output = np.append(label_output, label_temp, axis=0)
+                    init_output = np.append(init_output, init_temp, axis=0)
+
+                # save segment prediction, label, init results
+                if batch_idx == 0:
+                    prediction_output_segment.append(prediction_temp)
+                    label_output_segment.append(label_temp)
+                    init_output_segment.append(init_temp)
+                else:
+                    prediction_output_segment[i] = np.append(prediction_output_segment[i], prediction_temp, axis=0)
+                    label_output_segment[i] = np.append(label_output_segment[i], label_temp, axis=0)
+                    init_output_segment[i] = np.append(init_output_segment[i], init_temp, axis=0)
 
     sum_running_loss = sum_running_loss / (len(test_loader.dataset) * label.shape[1])
     print('\nTesting phase: epoch: {} Loss: {:.4f}\n'.format(epoch, sum_running_loss))
+
+    # save auroc result
     # auc_path = os.path.join(path, "epoch_" + str(epoch))
     # auc(['flow'], [2, 4, 10, 100], [[label_output, prediction_output]], auc_path)
+
+    # save correlation result
+    correlation_path = path
+    cor_path = os.path.join(correlation_path, "epoch_" + str(epoch))
+    correlation_pred_label = pred_cor.corrcoef(prediction_output, label_output, cor_path, "correlation_{0}.png".format(epoch))
+    correlation_init_label = init_cor.corrcoef(init_output, label_output, cor_path,  "correlation_init_label_{0}.png".format(epoch))
+    print('correlation coefficient : {0}\n'.format(correlation_pred_label))
+    print('correlation_init_label coefficient : {0}\n'.format(correlation_init_label))
+
+    for i in range(len(prediction_output_segment)):
+        correlation_pred_label = pred_seg_cor.corrcoef(prediction_output_segment[i], label_output_segment[i], cor_path,
+                                 "correlation_{0}_{1}.png".format(epoch, i))
+        correlation_init_label = init_seg_cor.corrcoef(init_output_segment[i], label_output_segment[i], cor_path,
+                                                   "correlation_init_label_{0}_{1}.png".format(epoch, i))
+        print('correlation coefficient segment {0} : {1}\n'.format(i, correlation_pred_label))
+        print('correlation_init_label coefficient segment {0} : {1}\n'.format(i, correlation_init_label))
     return sum_running_loss, prediction_output, label_output, init_output
 
 def save_model(checkpoint_dir,  model_checkpoint_name, model):
@@ -241,20 +293,11 @@ def main():
     train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True, num_workers=30,drop_last=True)
     test_loader = torch.utils.data.DataLoader(test_dataset, batch_size=args.batch_size, shuffle=False, num_workers=30, drop_last=True)
 
-    # cor = Correlation()
-    correlation_path = image_saving_path
     if args.eval_only:
         print("eval only")
         for epoch in range(1):
-            # loss, prediction_output, label_output, init_output = val(image_saving_path, model_ft, test_loader,
-            #                                                          device, criterion, epoch, args.batch_size)
-            loss, prediction_output, label_output, init_output = val_continuous(image_saving_path, model_ft, test_loader,
-                                                                     device, criterion, epoch, args.batch_size)
-            cor_path = os.path.join(correlation_path, "epoch_" + str(epoch))
-            coef = pred_cor.corrcoef(prediction_output, label_output, cor_path, "correlation_{0}.png".format(epoch))
-            correlation_init_label = init_cor.corrcoef(init_output,label_output, cor_path,"correlation_init_label_{0}.png".format(epoch))
-            print('correlation coefficient : {0}\n'.format(coef))
-            print('correlation_init_label coefficient : {0}\n'.format(correlation_init_label))
+            # val(image_saving_path, model_ft, test_loader, device, criterion, epoch, args.batch_size)
+            val_continuous(image_saving_path, model_ft, test_loader, device, criterion, epoch, args.batch_size)
         return True
 
     best_loss = np.inf
@@ -262,7 +305,6 @@ def main():
         print('Epoch {}/{}'.format(epoch, args.num_epochs - 1))
         print('-' * 80)
         exp_lr_scheduler.step()
-        cor_path = os.path.join(correlation_path, "epoch_" + str(epoch))
         train(model_ft, train_loader, device, optimizer_ft, criterion, epoch, args.batch_size)
         loss, prediction_output, label_output, init_output = val(image_saving_path, model_ft, test_loader, device, criterion, epoch, args.batch_size)
         if loss < best_loss:
@@ -270,10 +312,6 @@ def main():
                        model_checkpoint_name=args.model_checkpoint_name + "_epoch_" + str(epoch) + '_' + str(loss),
                        model=model_ft)
             best_loss = loss
-        coef = pred_cor.corrcoef(prediction_output, label_output, cor_path, "correlation_{0}.png".format(epoch))
-        correlation_init_label = init_cor.corrcoef(init_output,label_output, cor_path,"correlation_init_label_{0}.png".format(epoch))
-        print('prediction-label correlation coefficient : {0}\n'.format(coef))
-        print('initial-label correlation coefficient : {0}\n'.format(correlation_init_label))
 
 if __name__ == '__main__':
     main()
