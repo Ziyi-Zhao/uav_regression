@@ -32,6 +32,10 @@ class UAVDatasetTuple(Dataset):
             init = self._prepare_init(idx)
             label = self._get_label(idx)
 
+            # normal evaluation
+            # init = np.expand_dims(init, axis=0)
+
+            # continuous evaluation
             init = np.expand_dims(init, axis=1)
         except Exception as e:
             print('error encountered while loading {}'.format(idx))
