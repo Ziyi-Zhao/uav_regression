@@ -130,14 +130,18 @@ def val_continuous(path, model, test_loader, device, criterion, epoch, batch_siz
             # print("init shape", init.shape)
             label = data['label'].to(device).float()
 
-            prediction = np.zeros(label[:, i, :, :].shape)
+            prediction = np.zeros(label[:, 1, :, :].shape)
             for i in range(label.shape[1]):
 
                 # model prediction
                 if i == 0:
-                    prediction = model(subx=task_label[:, i, :, :, :], mainx=init[:, i, :, :])
+                    task_label_input = task_label[:, i, :, :, :]
+                    init_input = init[:, i, :, :]
+                    prediction = model(subx=task_label_input, mainx=init_input)
                 else:
-                    prediction = model(subx=task_label[:, i, :, :, :], mainx=prediction)
+                    task_label_input = task_label[:, i, :, :, :]
+                    init_input = prediction
+                    prediction = model(subx=task_label_input, mainx=init_input)
                 # loss
                 loss_mse = criterion(prediction, label[:, i, :, :].data)
 
@@ -241,8 +245,10 @@ def main():
     if args.eval_only:
         print("eval only")
         for epoch in range(1):
-            loss, prediction_output, label_output, init_output = val_continuous(image_saving_path, model_ft, test_loader,
+            loss, prediction_output, label_output, init_output = val(image_saving_path, model_ft, test_loader,
                                                                      device, criterion, epoch, args.batch_size)
+            # loss, prediction_output, label_output, init_output = val_continuous(image_saving_path, model_ft, test_loader,
+            #                                                          device, criterion, epoch, args.batch_size)
             cor_path = os.path.join(correlation_path, "epoch_" + str(epoch))
             coef = pred_cor.corrcoef(prediction_output, label_output, cor_path, "correlation_{0}.png".format(epoch))
             correlation_init_label = init_cor.corrcoef(init_output,label_output, cor_path,"correlation_init_label_{0}.png".format(epoch))

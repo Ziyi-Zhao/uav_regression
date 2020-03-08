@@ -32,7 +32,7 @@ class UAVDatasetTuple(Dataset):
             init = self._prepare_init(idx)
             label = self._get_label(idx)
 
-            # init = np.expand_dims(init, axis=0)
+            init = np.expand_dims(init, axis=1)
         except Exception as e:
             print('error encountered while loading {}'.format(idx))
             print("Unexpected error:", sys.exc_info()[0])
@@ -53,21 +53,8 @@ class UAVDatasetTuple(Dataset):
     def _prepare_task(self, idx):
         #task_coordinate = self.task_md[idx]
         input = self.task_md[idx]
-        # for i in range(input.shape[0]):
-        #     # if i < 30:
-        #     #     continue
-        #     for j in range(15):
-        #         x1 = int(input[i][j][0])
-        #         y1 = int(input[i][j][1])
-        #         x2 = int(input[i][j][2])
-        #         y2 = int(input[i][j][3])
-        #         if x1 == 0 and y1 == 0 and x2 == 0 and y2 == 0:
-        #             continue
-        #         else:
-        #             task_md[i][j][x1][y1] = 1.00
-        #             task_md[i][j][x2][y2] = 1.00
-        #     # if i > 30:
-        #     #     return task_md.reshape(input.shape[0],15,10000)
+        #print("input shape", input.shape)
+
         return input
 
     def _get_label(self, idx):
