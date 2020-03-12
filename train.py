@@ -23,8 +23,7 @@ os.environ["CUDA_VISIBLE_DEVICES"]="3"
 
 init_cor = Correlation()
 pred_cor = Correlation()
-init_seg_cor = Correlation()
-pred_seg_cor = Correlation()
+
 
 
 def train(model, train_loader, device, optimizer, criterion, epoch, batch_size):
@@ -214,6 +213,8 @@ def val_continuous(path, model, test_loader, device, criterion, epoch, batch_siz
     print('correlation_init_label coefficient : {0}\n'.format(correlation_init_label))
 
     for i in range(len(prediction_output_segment)):
+        init_seg_cor = Correlation()
+        pred_seg_cor = Correlation()
         correlation_pred_label = pred_seg_cor.corrcoef(prediction_output_segment[i], label_output_segment[i], cor_path,
                                  "correlation_{0}_{1}.png".format(epoch, i))
         correlation_init_label = init_seg_cor.corrcoef(init_output_segment[i], label_output_segment[i], cor_path,
