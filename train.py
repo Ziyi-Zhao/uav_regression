@@ -34,7 +34,7 @@ def train(model, train_loader, device, optimizer, criterion, epoch, batch_size):
 
     for batch_idx, data in enumerate(tqdm(train_loader)):
         optimizer.zero_grad()
-        task = data['task'].to(device).float()
+
         task_label = data['task_label'].to(device).float()
         #print("task shape", task.shape)
 
@@ -233,7 +233,6 @@ def main():
     torch.manual_seed(0)
 
     parser = argparse.ArgumentParser()
-    parser.add_argument("--data_path", help="data path", required=True, type=str)
     parser.add_argument("--data_label_path", help="data label path", required=True, type=str)
     parser.add_argument("--init_path", help="init path", required=True, type=str)
     parser.add_argument("--label_path", help="label path", required=True, type=str)
@@ -259,7 +258,7 @@ def main():
 
     device = torch.device("cuda")
 
-    all_dataset = UAVDatasetTuple(task_path=args.data_path, task_label_path = args.data_label_path, init_path=args.init_path, label_path=args.label_path)
+    all_dataset = UAVDatasetTuple(task_label_path = args.data_label_path, init_path=args.init_path, label_path=args.label_path)
 
     train_size = int(args.split_ratio * len(all_dataset))
     test_size = len(all_dataset) - train_size
