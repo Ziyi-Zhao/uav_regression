@@ -42,7 +42,10 @@ def rates(label, prediction, percentage):
     return tpr, fpr
 
 
-def auc(types, percentages, data, auc_path):
+def auc(types, percentages, data, auc_path, epoch, segment = 0):
+
+    print("Segment: {0}".format(segment))
+    print()
 
     for p in percentages:
         tprs = []
@@ -65,7 +68,7 @@ def auc(types, percentages, data, auc_path):
         plt.ylabel("True Positive Rate")
         plt.title("AUROC")
         plt.legend()
-        plt.savefig(auc_path + "/auroc_p_{0}.png".format(1 - 1 / p))
+        plt.savefig(auc_path + "/auroc_{0}_{1}_p_{2}.png".format(epoch, segment, (1 - 1 / p)))
 
 
 if __name__ == "__main__":
