@@ -44,9 +44,6 @@ def rates(label, prediction, percentage):
 
 def auc(types, percentages, data, auc_path, epoch, segment = 0):
 
-    print("Segment: {0}".format(segment))
-    print()
-
     for p in percentages:
         tprs = []
         fprs = []

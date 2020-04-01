@@ -5,6 +5,7 @@ import torch
 import torch.nn as nn
 
 from tqdm import tqdm
+from copy import deepcopy
 from model import mainnet
 from seg_dynamic import seg_dynamic
 from seg_static import seg_static
@@ -104,26 +105,34 @@ def val_continuous(path, model_ft_dynamic, model_ft_static, test_loader, device,
     print('\nTesting phase: epoch: {} Loss: {:.4f}\n'.format(epoch, sum_running_loss))
 
     # save correlation result
-    # correlation_path = path
-    # cor_path = os.path.join(correlation_path, "epoch_" + str(epoch))
-    # correlation_pred_label = pred_cor.corrcoef(prediction_output, label_output, cor_path, "correlation_{0}.png".format(epoch))
-    # correlation_init_label = init_cor.corrcoef(init_output, label_output, cor_path,  "correlation_init_label_{0}.png".format(epoch))
-    # print('correlation coefficient : {0}\n'.format(correlation_pred_label))
-    # print('correlation_init_label coefficient : {0}\n'.format(correlation_init_label))
+    correlation_path = path
+    cor_path = os.path.join(correlation_path, "epoch_" + str(epoch))
+    correlation_pred_label = pred_cor.corrcoef(prediction_output, label_output, cor_path, "correlation_{0}.png".format(epoch))
+    correlation_init_label = init_cor.corrcoef(init_output, label_output, cor_path,  "correlation_init_label_{0}.png".format(epoch))
+    print('correlation coefficient : {0}\n'.format(correlation_pred_label))
+    print('correlation_init_label coefficient : {0}\n'.format(correlation_init_label))
 
     for i in range(len(prediction_output_segment)):
-        # init_seg_cor = Correlation()
-        # pred_seg_cor = Correlation()
-        # correlation_pred_label = pred_seg_cor.corrcoef(prediction_output_segment[i], label_output_segment[i], cor_path,
-        #                          "correlation_{0}_{1}.png".format(epoch, i))
-        # correlation_init_label = init_seg_cor.corrcoef(init_output_segment[i], label_output_segment[i], cor_path,
-        #                                            "correlation_init_label_{0}_{1}.png".format(epoch, i))
-        # print('correlation coefficient segment {0} : {1}\n'.format(i, correlation_pred_label))
-        # print('correlation_init_label coefficient segment {0} : {1}\n'.format(i, correlation_init_label))
+        print("Segment: {0}".format(i))
+        print()
+
+        init_seg_cor = Correlation()
+        pred_seg_cor = Correlation()
+
+        label_auc = label_output_segment[i]
+        prediction_auc = prediction_output_segment[i]
 
         # save auroc result
         auc_path = os.path.join(path, "epoch_" + str(epoch))
-        auc(['flow'], [2, 4, 10, 100], [[label_output_segment[i], prediction_output_segment[i]]], auc_path, str(epoch), str(i))
+        auc(['flow'], [2, 4, 10, 100], [[label_auc, prediction_auc]], auc_path, str(epoch), str(i))
+
+        correlation_pred_label = pred_seg_cor.corrcoef(prediction_output_segment[i], label_output_segment[i], cor_path,
+                                 "correlation_{0}_{1}.png".format(epoch, i))
+        correlation_init_label = init_seg_cor.corrcoef(init_output_segment[i], label_output_segment[i], cor_path,
+                                                   "correlation_init_label_{0}_{1}.png".format(epoch, i))
+        print('correlation coefficient segment {0} : {1}\n'.format(i, correlation_pred_label))
+        print('correlation_init_label coefficient segment {0} : {1}\n'.format(i, correlation_init_label))
+
 
     return sum_running_loss, prediction_output, label_output, init_output
 
