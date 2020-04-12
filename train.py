@@ -18,13 +18,10 @@ from auc import auc
 
 image_saving_dir = '/home/zzhao/data/uav_regression/'
 
-
 os.environ["CUDA_VISIBLE_DEVICES"]="1"
 
 init_cor = Correlation()
 pred_cor = Correlation()
-
-
 
 def train(model, train_loader, device, optimizer, criterion, epoch, batch_size):
     model.train()

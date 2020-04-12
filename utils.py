@@ -35,15 +35,19 @@ def visualize_sum_testing_result(path,init, prediction,sub_prediction, label, ba
 
         # print("sub_prediction.shape ", sub_prediction.shape)
         #4, 1, 60, 100, 100
-        sub_prediction_output = sub_prediction[idx][30].cpu().detach()
-        sub_prediction_output = torch.squeeze(sub_prediction_output)
+        sub_prediction_output_1 = sub_prediction[idx][30].cpu().detach()
+        sub_prediction_output_1 = torch.squeeze(sub_prediction_output_1)
+        sub_prediction_output_2 = sub_prediction[idx][31].cpu().detach()
+        sub_prediction_output_2 = torch.squeeze(sub_prediction_output_2)
         label_output = label[idx].cpu().detach()
         label_output = torch.squeeze(label_output)
 
         torchvision.utils.save_image(init_output, path + "/epoch_" + str(\
             epoch) + "/sum" + "/" + str(idx + batch_id * batch_size) + "_init.png")
-        torchvision.utils.save_image(sub_prediction_output, path + "/epoch_" + str(
-            epoch) + "/sum" + "/" + str(idx + batch_id * batch_size) + "_sub_prediction.png")
+        torchvision.utils.save_image(sub_prediction_output_1, path + "/epoch_" + str(
+            epoch) + "/sum" + "/" + str(idx + batch_id * batch_size) + "_sub_prediction_1.png")
+        torchvision.utils.save_image(sub_prediction_output_2, path + "/epoch_" + str(
+            epoch) + "/sum" + "/" + str(idx + batch_id * batch_size) + "_sub_prediction_2.png")
         torchvision.utils.save_image(prediction_output, path + "/epoch_" + str(epoch) + "/sum" + "/" + str(idx + batch_id * batch_size) +  "_prediction.png")
         torchvision.utils.save_image(label_output, path + "/epoch_" + str(epoch) + "/sum" + "/" + str(idx + batch_id * batch_size ) +  "_label.png")
 
@@ -65,15 +69,19 @@ def visualize_sum_testing_result_cont(path,init, prediction,sub_prediction, labe
 
         # print("sub_prediction.shape ", sub_prediction.shape)
         #4, 1, 60, 100, 100
-        sub_prediction_output = sub_prediction[idx][30].cpu().detach()
-        sub_prediction_output = torch.squeeze(sub_prediction_output)
+        sub_prediction_output_1 = sub_prediction[idx][30].cpu().detach()
+        sub_prediction_output_1 = torch.squeeze(sub_prediction_output_1)
+        sub_prediction_output_2 = sub_prediction[idx][31].cpu().detach()
+        sub_prediction_output_2 = torch.squeeze(sub_prediction_output_2)
         label_output = label[idx].cpu().detach()
         label_output = torch.squeeze(label_output)
 
         torchvision.utils.save_image(init_output, path + "/epoch_" + str(\
             epoch) + "/sum" + "/" + str(idx + batch_id * batch_size) + "_init_" + str(cont_index) + ".png")
-        torchvision.utils.save_image(sub_prediction_output, path + "/epoch_" + str(
-            epoch) + "/sum" + "/" + str(idx + batch_id * batch_size) + "_sub_prediction_" + str(cont_index) + ".png")
+        torchvision.utils.save_image(sub_prediction_output_1, path + "/epoch_" + str(
+            epoch) + "/sum" + "/" + str(idx + batch_id * batch_size) + "_sub_prediction_1.png")
+        torchvision.utils.save_image(sub_prediction_output_2, path + "/epoch_" + str(
+            epoch) + "/sum" + "/" + str(idx + batch_id * batch_size) + "_sub_prediction_2.png")
         torchvision.utils.save_image(prediction_output, path + "/epoch_" + str(epoch) + "/sum" + "/" + str(idx + batch_id * batch_size) +  "_prediction_" + str(cont_index) + ".png")
         torchvision.utils.save_image(label_output, path + "/epoch_" + str(epoch) + "/sum" + "/" + str(idx + batch_id * batch_size ) +  "_label_" + str(cont_index) + ".png")
 

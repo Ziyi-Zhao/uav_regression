@@ -10,6 +10,7 @@ class Unit(nn.Module):
         self.out3 = 256
 
         self.relu = nn.ReLU(inplace=True)
+        # self.dropout = nn.Dropout(p=0.2)
 
         # 3D Conv Operation
         # self.sub_conv1 = nn.Conv3d(in_channels=1, out_channels=self.out1, kernel_size=(4, 4, 2), stride=(2, 2, 2))
@@ -49,12 +50,14 @@ class Unit(nn.Module):
         subx = self.sub_conv2(subx)
         subx = self.bn3d_sub_2(subx)
         subx = self.relu(subx)
+        # x = self.dropout(x)
 
         subx = self.max_pool_3d1(subx)
 
         subx = self.sub_conv3(subx)
         subx = self.bn3d_sub_3(subx)
         subx = self.relu(subx)
+        # x = self.dropout(x)
 
         return subx
 

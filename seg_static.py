@@ -27,6 +27,7 @@ class seg_static(nn.Module):
         self.out4 = 512
 
         self.relu = nn.ReLU(inplace=True)
+        # self.dropout = nn.Dropout(p=0.2)
 
         # mainnet & deconv parameters initialization
         self.bn2d_main_1 = nn.BatchNorm2d(self.out1)
@@ -52,7 +53,7 @@ class seg_static(nn.Module):
 
 
         # subnet parameters initialization
-        self.convs = nn.ModuleList([Unit(10) for i in range(6)])
+        self.convs = nn.ModuleList([Unit(10 * 2) for i in range(6)])
         self.affines = nn.ModuleList([iLayer([self.out3,23,23]) for i in range(6)])
 
         # cat batchnormalization
@@ -89,7 +90,7 @@ class seg_static(nn.Module):
 
         for i in range(0, 6, 1):
 
-            subx = sub_x[:, i * 10: i * 10 + 10, :, :]
+            subx = sub_x[:, i * 10 * 2 : i * 10 * 2  + 10 * 2 , :, :]
 
             # 3D Conv Operation
             # sub_x = subx.permute(0,1,3,4,2)
@@ -97,15 +98,7 @@ class seg_static(nn.Module):
             subx = self.convs[i](subx).to(torch.device("cuda")).float()
 
             _add = self.affines[i](subx)
-            # print("ADD shape", _add.shape)
-            # _add = torch.sum(_add,1)
-            # _add = _add.view(_add.shape[0],-1)
-            # _add = self.fc3(_add)
-            # _add = self.relu(_add)
-            # # _add = self.fc4(_add)
-            # # _add = self.relu(_add)
-            # _add = _add.view(_add.shape[0], 100, 100)
-            # print("_add shape", _add.shape)
+
             if i == 0:
                 sub_output = _add
             else:
@@ -132,6 +125,7 @@ class seg_static(nn.Module):
         # print("main conv2", x.shape)
         x = self.bn2d_main_2(x)
         x = self.relu(x)
+        # x = self.dropout(x)
 
         x = self.max_pool1(x)
         # print("pool 1", x.shape)
@@ -139,6 +133,7 @@ class seg_static(nn.Module):
         x = self.main_conv3(x)
         x = self.bn2d_main_3(x)
         x = self.relu(x)
+        # x = self.dropout(x)
         # print("main conv3", x.shape)
         # x = self.max_pool2(x)
         #print("pool 2", x.shape)

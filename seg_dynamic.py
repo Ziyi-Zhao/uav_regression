@@ -52,9 +52,9 @@ class seg_dynamic(nn.Module):
 
 
         # subnet parameters initialization
-        self.convs = nn.ModuleList([Unit(10), Unit(10), Unit(10),
-                                    Unit(5), Unit(5), Unit(5), Unit(5),
-                                    Unit(2), Unit(2), Unit(2), Unit(2), Unit(2)])
+        self.convs = nn.ModuleList([Unit(10 * 2), Unit(10 * 2), Unit(10 * 2),
+                                    Unit(5 * 2), Unit(5 * 2), Unit(5 * 2), Unit(5 * 2),
+                                    Unit(2 * 2), Unit(2 * 2), Unit(2 * 2), Unit(2 * 2), Unit(2 * 2)])
         self.affines = nn.ModuleList([iLayer([self.out3,23,23]) for i in range(12)])
 
         # cat batchnormalization
@@ -93,14 +93,14 @@ class seg_dynamic(nn.Module):
 
             subx = []
             if i < 3:
-                step = 10
+                step = 10 * 2
                 subx = sub_x[:, i * step : i * step + step, :, :]
             elif i >= 3 and i < 7:
-                step = 5
-                subx = sub_x[:, 30 + (i - 3) * step : 30 + (i - 3) * step + step, :, :]
+                step = 5 * 2
+                subx = sub_x[:, 60 + (i - 3) * step : 60 + (i - 3) * step + step, :, :]
             elif i >= 7 and i < 12:
-                step = 2
-                subx = sub_x[:, 50 + (i - 7) * step : 50 + (i - 7) * step + step, :, :]
+                step = 2 * 2
+                subx = sub_x[:, 100 + (i - 7) * step : 100 + (i - 7) * step + step, :, :]
 
             # 3D Conv Operation
             # sub_x = subx.permute(0,1,3,4,2)
@@ -108,15 +108,7 @@ class seg_dynamic(nn.Module):
             subx = self.convs[i](subx).to(torch.device("cuda")).float()
 
             _add = self.affines[i](subx)
-            # print("ADD shape", _add.shape)
-            # _add = torch.sum(_add,1)
-            # _add = _add.view(_add.shape[0],-1)
-            # _add = self.fc3(_add)
-            # _add = self.relu(_add)
-            # # _add = self.fc4(_add)
-            # # _add = self.relu(_add)
-            # _add = _add.view(_add.shape[0], 100, 100)
-            # print("_add shape", _add.shape)
+
             if i == 0:
                 sub_output = _add
             else:

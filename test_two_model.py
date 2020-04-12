@@ -37,12 +37,12 @@ def val_continuous(path, model_ft_dynamic, model_ft_static, test_loader, device,
             task_label = data['task_label'].to(device).float()
 
             # All black
-            # init = data['init']
-            # init[:] = 0
-            # init = init.to(device).float()
+            init = data['init']
+            init[:] = 0
+            init = init.to(device).float()
 
             # Normal
-            init = data['init'].to(device).float()
+            # init = data['init'].to(device).float()
 
             # print("init shape", init.shape)
             last_label = data['last_label'].to(device).float()
