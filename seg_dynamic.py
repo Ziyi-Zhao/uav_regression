@@ -52,9 +52,17 @@ class seg_dynamic(nn.Module):
 
 
         # subnet parameters initialization
-        self.convs = nn.ModuleList([Unit(10 * 2), Unit(10 * 2), Unit(10 * 2),
-                                    Unit(5 * 2), Unit(5 * 2), Unit(5 * 2), Unit(5 * 2),
-                                    Unit(2 * 2), Unit(2 * 2), Unit(2 * 2), Unit(2 * 2), Unit(2 * 2)])
+
+        # combined channels input
+        # self.convs = nn.ModuleList([Unit(10 * 2), Unit(10 * 2), Unit(10 * 2),
+        #                             Unit(5 * 2), Unit(5 * 2), Unit(5 * 2), Unit(5 * 2),
+        #                             Unit(2 * 2), Unit(2 * 2), Unit(2 * 2), Unit(2 * 2), Unit(2 * 2)])
+        # self.affines = nn.ModuleList([iLayer([self.out3,23,23]) for i in range(12)])
+
+        # normal channel input
+        self.convs = nn.ModuleList([Unit(10), Unit(10), Unit(10),
+                                    Unit(5), Unit(5), Unit(5), Unit(5),
+                                    Unit(2), Unit(2), Unit(2), Unit(2), Unit(2)])
         self.affines = nn.ModuleList([iLayer([self.out3,23,23]) for i in range(12)])
 
         # cat batchnormalization
@@ -89,19 +97,33 @@ class seg_dynamic(nn.Module):
 
         # print("subx shape", sub_x.shape)
 
+        # combined channels input
+        # for i in range(0, 12, 1):
+        #
+        #     subx = []
+        #     if i < 3:
+        #         step = 10 * 2
+        #         subx = sub_x[:, i * step : i * step + step, :, :]
+        #     elif i >= 3 and i < 7:
+        #         step = 5 * 2
+        #         subx = sub_x[:, 60 + (i - 3) * step : 60 + (i - 3) * step + step, :, :]
+        #     elif i >= 7 and i < 12:
+        #         step = 2 * 2
+        #         subx = sub_x[:, 100 + (i - 7) * step : 100 + (i - 7) * step + step, :, :]
+
+        # normal channel input
         for i in range(0, 12, 1):
 
             subx = []
             if i < 3:
-                step = 10 * 2
+                step = 10
                 subx = sub_x[:, i * step : i * step + step, :, :]
             elif i >= 3 and i < 7:
-                step = 5 * 2
-                subx = sub_x[:, 60 + (i - 3) * step : 60 + (i - 3) * step + step, :, :]
+                step = 5
+                subx = sub_x[:, 30 + (i - 3) * step : 30 + (i - 3) * step + step, :, :]
             elif i >= 7 and i < 12:
-                step = 2 * 2
-                subx = sub_x[:, 100 + (i - 7) * step : 100 + (i - 7) * step + step, :, :]
-
+                step = 2
+                subx = sub_x[:, 50 + (i - 7) * step : 50 + (i - 7) * step + step, :, :]
             # 3D Conv Operation
             # sub_x = subx.permute(0,1,3,4,2)
 

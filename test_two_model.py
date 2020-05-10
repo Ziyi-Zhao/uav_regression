@@ -37,12 +37,12 @@ def val_continuous(path, model_ft_dynamic, model_ft_static, test_loader, device,
             task_label = data['task_label'].to(device).float()
 
             # All black
-            init = data['init']
-            init[:] = 0
-            init = init.to(device).float()
+            # init = data['init']
+            # init[:] = 0
+            # init = init.to(device).float()
 
             # Normal
-            # init = data['init'].to(device).float()
+            init = data['init'].to(device).float()
 
             # print("init shape", init.shape)
             last_label = data['last_label'].to(device).float()
@@ -178,15 +178,16 @@ def main():
 
     criterion  = nn.MSELoss(reduction='sum')
 
-    if args.load_from_last_checkpoint:
-        chkpt_last_model_path = args.load_from_last_checkpoint
-        print("Loading ", chkpt_last_model_path)
-        model_ft_dynamic.load_state_dict(torch.load(chkpt_last_model_path, map_location=device))
-
     if args.load_from_avg_checkpoint:
         chkpt_avg_model_path = args.load_from_avg_checkpoint
         print("Loading ", chkpt_avg_model_path)
         model_ft_static.load_state_dict(torch.load(chkpt_avg_model_path, map_location=device))
+
+
+    if args.load_from_last_checkpoint:
+        chkpt_last_model_path = args.load_from_last_checkpoint
+        print("Loading ", chkpt_last_model_path)
+        model_ft_dynamic.load_state_dict(torch.load(chkpt_last_model_path, map_location=device))
 
 
     model_ft_dynamic = model_ft_dynamic.to(device)

@@ -18,7 +18,7 @@ from auc import auc
 
 image_saving_dir = '/home/zzhao/data/uav_regression/'
 
-os.environ["CUDA_VISIBLE_DEVICES"]="1"
+os.environ["CUDA_VISIBLE_DEVICES"]="0"
 
 init_cor = Correlation()
 pred_cor = Correlation()
@@ -107,8 +107,8 @@ def val(path, model, test_loader, device, criterion, epoch, batch_size):
     print('\nTesting phase: epoch: {} Loss: {:.4f}\n'.format(epoch, sum_running_loss))
 
     # save auroc result
-    # auc_path = os.path.join(path, "epoch_" + str(epoch))
-    # auc(['flow'], [2, 4, 10, 100], [[label_output, prediction_output]], auc_path, epoch)
+    auc_path = os.path.join(path, "epoch_" + str(epoch))
+    auc(['flow'], [2, 4, 10, 100], [[label_output, prediction_output]], auc_path, epoch)
 
     # save correlation result
     correlation_path = path
@@ -293,8 +293,8 @@ def main():
     if args.eval_only:
         print("eval only")
         for epoch in range(1):
-            # val(image_saving_path, model_ft, test_loader, device, criterion, epoch, args.batch_size)
-            val_continuous(image_saving_path, model_ft, test_loader, device, criterion, epoch, args.batch_size)
+            val(image_saving_path, model_ft, test_loader, device, criterion, epoch, args.batch_size)
+            # val_continuous(image_saving_path, model_ft, test_loader, device, criterion, epoch, args.batch_size)
         return True
 
     best_loss = np.inf
