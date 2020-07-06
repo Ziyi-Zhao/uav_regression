@@ -265,8 +265,8 @@ def main():
 
     print("\nLet's use", torch.cuda.device_count(), "GPUs!\n")
 
-    model_ft = seg_dynamic()
-    # model_ft = seg_static()
+    # model_ft = seg_dynamic()
+    model_ft = seg_static()
     # model_ft = mainnet()
 
     model_ft = nn.DataParallel(model_ft)
